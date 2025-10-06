@@ -16,7 +16,7 @@
         intervals: new Map(),
         retryAttempts: new Map(),
         isVisible: true,
-        autoRefreshEnabled: true
+        autoRefreshEnabled: false  // Default to disabled until user enables it
     };
     
     // Dashboard module
@@ -25,7 +25,7 @@
         init() {
             console.log('Initializing Dashboard module...');
             this.setupAutoRefreshToggle();
-            this.setupAutoRefresh();
+            // Note: setupAutoRefresh() is now called conditionally in setupAutoRefreshToggle()
             this.setupSearchHandlers();
             this.setupModalHandlers();
             this.setupVisibilityHandling();
@@ -40,14 +40,30 @@
             
             if (!toggle || !refreshStatus) return;
             
-            // Initialize state from localStorage
+            // Initialize state from localStorage, default to false if not set
             const savedState = localStorage.getItem('dashboard-auto-refresh');
             if (savedState !== null) {
                 DashboardState.autoRefreshEnabled = JSON.parse(savedState);
-                toggle.checked = DashboardState.autoRefreshEnabled;
+            } else {
+                // Default to false and save this preference
+                DashboardState.autoRefreshEnabled = false;
+                localStorage.setItem('dashboard-auto-refresh', 'false');
             }
             
+            // Set toggle state to match current setting
+            toggle.checked = DashboardState.autoRefreshEnabled;
+            
             this.updateRefreshStatus();
+            
+            // Setup auto-refresh if it's enabled, otherwise ensure indicators are hidden
+            if (DashboardState.autoRefreshEnabled) {
+                this.setupAutoRefresh();
+            } else {
+                // Hide refresh indicators when disabled
+                document.querySelectorAll('.auto-refresh-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0.3';
+                });
+            }
             
             // Handle toggle changes
             toggle.addEventListener('change', (e) => {
@@ -57,6 +73,7 @@
                 this.updateRefreshStatus();
                 
                 if (DashboardState.autoRefreshEnabled) {
+                    this.setupAutoRefresh();
                     this.resumeAutoRefresh();
                     window.showNotification('Auto-refresh enabled', 'success');
                 } else {
@@ -80,11 +97,14 @@
         },
         
         pauseAutoRefresh() {
-            // Pause all intervals but don't clear them
+            // Clear all intervals completely
             DashboardState.intervals.forEach((intervalId, key) => {
                 clearInterval(intervalId);
-                console.log(`Auto-refresh paused for ${key}`);
+                console.log(`Auto-refresh stopped for ${key}`);
             });
+            
+            // Clear the intervals map
+            DashboardState.intervals.clear();
             
             // Hide refresh indicators
             document.querySelectorAll('.auto-refresh-indicator').forEach(indicator => {

@@ -17,12 +17,12 @@
         </h1>
         <div class="auto-refresh-toggle-container">
             <label class="auto-refresh-toggle">
-                <input type="checkbox" id="auto-refresh-toggle" checked>
+                <input type="checkbox" id="auto-refresh-toggle">
                 <span class="toggle-slider"></span>
                 <span class="toggle-label">Auto-refresh</span>
             </label>
             <span class="refresh-status" id="refresh-status">
-                <i class="fas fa-sync-alt"></i> Active
+                <i class="fas fa-pause"></i> Paused
             </span>
             <button class="btn btn-secondary" id="manual-refresh-btn" onclick="window.SimpExtrac.Dashboard.manualRefreshAll()">
                 <i class="fas fa-sync-alt"></i> Refresh Now
@@ -40,9 +40,6 @@
             <div class="stat-value">{{ stats.total_jobs|default:"0" }}</div>
             <div class="stat-label">
                 Total Jobs
-                <span class="auto-refresh-indicator" data-refresh-indicator="stats">
-                    <i class="fas fa-sync-alt"></i>
-                </span>
             </div>
         </div>
         <div class="stat-card">
@@ -66,9 +63,6 @@
                 <h2 class="card-title">
                     <i class="fas fa-chart-pie"></i> Jobs by Source
                 </h2>
-                <div class="auto-refresh-indicator" data-refresh-indicator="charts">
-                    <i class="fas fa-sync-alt"></i> Auto-refresh
-                </div>
             </div>
             <div class="card-content">
                 <div class="chart-container">
@@ -176,26 +170,36 @@
 <script src="{% static 'js/dashboard.js' %}"></script>
 <script src="{% static 'js/dashboard-charts.js' %}"></script>
 
-<!-- Chart data stored in data attributes to avoid template syntax in JavaScript -->
-<script id="chart-data" type="application/json"
-        data-sources="{{ source_stats|escapejs }}"
-        data-activity="{{ activity_data|escapejs }}"
-        data-companies="{{ top_companies|escapejs }}"
-        data-locations="{{ top_locations|escapejs }}">
-</script>
+<!-- Safe JSON data passing -->
+{{ source_stats|json_script:"source-stats" }}
+{{ activity_data|json_script:"activity-data" }}
+{{ top_companies|json_script:"top-companies" }}
+{{ top_locations|json_script:"top-locations" }}
 
 <script>
 // Initialize Dashboard Charts using external module
 document.addEventListener('DOMContentLoaded', function() {
-    const chartDataScript = document.getElementById('chart-data');
-    const chartData = {
-        sources: JSON.parse(chartDataScript.dataset.sources),
-        activity: JSON.parse(chartDataScript.dataset.activity),
-        companies: JSON.parse(chartDataScript.dataset.companies),
-        locations: JSON.parse(chartDataScript.dataset.locations)
-    };
-    
-    initializeDashboardCharts(chartData);
+    try {
+        // Safely parse JSON from script tags
+        const sourceStatsElement = document.getElementById('source-stats');
+        const activityDataElement = document.getElementById('activity-data');
+        const topCompaniesElement = document.getElementById('top-companies');
+        const topLocationsElement = document.getElementById('top-locations');
+        
+        const chartData = {
+            sources: sourceStatsElement ? JSON.parse(JSON.parse(sourceStatsElement.textContent)) : [],
+            activity: activityDataElement ? JSON.parse(JSON.parse(activityDataElement.textContent)) : [],
+            companies: topCompaniesElement ? JSON.parse(JSON.parse(topCompaniesElement.textContent)) : [],
+            locations: topLocationsElement ? JSON.parse(JSON.parse(topLocationsElement.textContent)) : []
+        };
+        
+        // Initialize charts if function exists
+        if (typeof initializeDashboardCharts === 'function') {
+            initializeDashboardCharts(chartData);
+        }
+    } catch (error) {
+        console.error('Error initializing dashboard charts:', error);
+    }
 });
 </script>
 {% endblock %}
