@@ -14,181 +14,346 @@
         <i class="fas fa-robot"></i> Job Scraper Control
     </h1>
     
-    <div class="grid grid-2">
-        <!-- Scraper Configuration -->
-        <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">
-                    <i class="fas fa-cog"></i> Scraper Configuration
-                </h2>
-            </div>
-            <div class="card-content">
-                <form hx-post="{% url 'jobs:scraper_control' %}"
-                      hx-target="#scraper-results"
-                      hx-indicator="#scraper-loading"
-                      class="scraper-form">
-                    {% csrf_token %}
-                    
+    <!-- Main Scraper Form -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i class="fas fa-cog"></i> Manual Scraping
+            </h2>
+        </div>
+        <div class="card-content">
+            <form hx-post="{% url 'jobs:scraper_control' %}"
+                  hx-target="#scraper-results"
+                  hx-indicator="#scraper-loading"
+                  class="scraper-form">
+                {% csrf_token %}
+                
+                <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label" for="job_title">
-                            <i class="fas fa-briefcase"></i> Job Title
-                        </label>
+                        <label class="form-label" for="job_title">Job Title</label>
                         <input type="text" 
                                id="job_title"
                                name="job_title" 
                                class="form-input" 
-                               placeholder="e.g., Python Developer, Data Scientist"
+                               placeholder="e.g., Python Developer"
                                value="Python Developer"
                                required>
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="location">
-                            <i class="fas fa-map-marker-alt"></i> Location
-                        </label>
+                        <label class="form-label" for="location">Location</label>
                         <input type="text" 
                                id="location"
                                name="location" 
                                class="form-input" 
-                               placeholder="e.g., New York, Remote, San Francisco"
+                               placeholder="e.g., Remote"
                                value="Remote">
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label" for="num_jobs">
-                            <i class="fas fa-hashtag"></i> Number of Jobs
-                        </label>
+                        <label class="form-label" for="num_jobs">Jobs</label>
                         <select id="num_jobs" name="num_jobs" class="form-select">
-                            <option value="5">5 jobs</option>
-                            <option value="10" selected>10 jobs</option>
-                            <option value="25">25 jobs</option>
-                            <option value="50">50 jobs</option>
-                            <option value="100">100 jobs</option>
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
                         </select>
                     </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">
-                            <i class="fas fa-external-link-alt"></i> Sources
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Sources</label>
+                    <div class="checkbox-group-inline">
+                        <label class="checkbox-item-inline">
+                            <input type="checkbox" name="sources" value="indeed" checked>
+                            Indeed
                         </label>
-                        <div class="checkbox-group">
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sources" value="indeed" checked>
-                                <span class="checkmark"></span>
-                                Indeed
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sources" value="glassdoor" checked>
-                                <span class="checkmark"></span>
-                                Glassdoor
-                            </label>
-                            <label class="checkbox-item">
-                                <input type="checkbox" name="sources" value="linkedin">
-                                <span class="checkmark"></span>
-                                LinkedIn <span class="tag">Coming Soon</span>
-                            </label>
+                        <label class="checkbox-item-inline">
+                            <input type="checkbox" name="sources" value="glassdoor" checked>
+                            Glassdoor
+                        </label>
+                        <label class="checkbox-item-inline">
+                            <input type="checkbox" name="sources" value="linkedin">
+                            LinkedIn
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-actions-minimal">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Start Manual Scan
+                    </button>
+                </div>
+            </form>
+            
+            <div id="scraper-loading" class="scraper-loading hidden">
+                <div class="scraper-loading-content">
+                    <div class="modern-spinner">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    
+                    <div class="scraper-loading-title">
+                        <i class="fas fa-robot"></i> Scraping in Progress
+                    </div>
+                    
+                    <div class="scraper-progress-container">
+                        <div class="scraper-progress-bar">
+                            <div class="scraper-progress-fill"></div>
                         </div>
                     </div>
                     
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-play"></i> Start Scraping
-                        </button>
-                        <button type="reset" class="btn btn-secondary">
-                            <i class="fas fa-undo"></i> Reset
-                        </button>
+                    <div class="scraper-stats-live">
+                        <div class="live-stat">
+                            <div class="live-stat-value" id="live-elapsed-time">0s</div>
+                            <div class="live-stat-label">Elapsed</div>
+                        </div>
+                        <div class="live-stat">
+                            <div class="live-stat-value" id="live-jobs-found">0</div>
+                            <div class="live-stat-label">Found</div>
+                        </div>
                     </div>
-                </form>
-                
-                <div id="scraper-loading" class="scraper-loading hidden">
-                    <div class="spinner"></div>
-                    <p>Scraping in progress... This may take a few minutes.</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Scraper Statistics -->
-        <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">
-                    <i class="fas fa-chart-bar"></i> Scraping Statistics
-                </h2>
-            </div>
-            <div class="card-content">
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-value">{{ stats.total_jobs }}</div>
-                        <div class="stat-label">Total Jobs</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">{{ stats.indeed_jobs }}</div>
-                        <div class="stat-label">Indeed Jobs</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">{{ stats.glassdoor_jobs }}</div>
-                        <div class="stat-label">Glassdoor Jobs</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">{{ stats.total_companies }}</div>
-                        <div class="stat-label">Companies</div>
-                    </div>
-                </div>
-                
-                <div class="scraper-tips">
-                    <h3 class="tips-title">
-                        <i class="fas fa-lightbulb"></i> Scraping Tips
-                    </h3>
-                    <ul class="tips-list">
-                        <li>Use specific job titles for better results</li>
-                        <li>Try different location combinations</li>
-                        <li>Start with smaller batches (10-25 jobs) for testing</li>
-                        <li>Check the dashboard for real-time updates</li>
-                        <li>Scraping typically takes 1-3 minutes per 10 jobs</li>
-                    </ul>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Recent Scraping Activity -->
+
+    <!-- Scheduled Scanning -->
     <div class="card">
         <div class="card-header">
             <h2 class="card-title">
-                <i class="fas fa-history"></i> Recent Scraping Activity
+                <i class="fas fa-clock"></i> Scheduled Scanning
             </h2>
-            <button class="btn btn-secondary" 
-                    hx-get="{% url 'jobs:scraper_control' %}"
-                    hx-target="#recent-activity">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
         </div>
         <div class="card-content">
-            <div id="recent-activity">
-                {% if recent_jobs %}
-                    <div class="recent-jobs-grid">
-                        {% for job in recent_jobs %}
-                            <div class="recent-job-card">
-                                <div class="job-info">
-                                    <h4 class="job-title">{{ job.title }}</h4>
-                                    <div class="job-company">{{ job.company.name }}</div>
-                                    <div class="job-meta">
-                                        <span>{{ job.location|default:"Remote" }}</span>
-                                        <span>{{ job.source|capfirst }}</span>
-                                        <span>{{ job.created_at|timesince }} ago</span>
-                                    </div>
-                                </div>
-                                <div class="job-actions">
-                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-external-link-alt"></i> View
-                                    </a>
-                                </div>
+            <form hx-post="{% url 'jobs:schedule_scraping' %}"
+                  hx-target="#schedule-results"
+                  class="schedule-form">
+                {% csrf_token %}
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="schedule_job_title">Job Title</label>
+                        <input type="text" 
+                               id="schedule_job_title"
+                               name="job_title" 
+                               class="form-input" 
+                               placeholder="e.g., Python Developer"
+                               required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="schedule_location">Location</label>
+                        <input type="text" 
+                               id="schedule_location"
+                               name="location" 
+                               class="form-input" 
+                               placeholder="e.g., Remote">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="schedule_interval">Frequency</label>
+                        <select id="schedule_interval" name="interval" class="form-select" onchange="toggleScheduleOptions()">
+                            <option value="custom">Custom Interval</option>
+                            <option value="30min">Every 30 Minutes</option>
+                            <option value="hourly">Hourly</option>
+                            <option value="daily" selected>Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="once">One-time (Specific Date/Time)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Interval Options -->
+                <div id="custom-options" class="form-group" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="custom_minutes">Every X Minutes</label>
+                            <input type="number" 
+                                   id="custom_minutes"
+                                   name="custom_minutes" 
+                                   class="form-input" 
+                                   min="1" 
+                                   max="1440"
+                                   placeholder="e.g., 30">
+                            <small class="form-help">1-1440 minutes (24 hours max)</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Selection -->
+                <div id="time-options" class="form-group">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="schedule_time">Start Time</label>
+                            <input type="time" 
+                                   id="schedule_time"
+                                   name="schedule_time" 
+                                   class="form-input" 
+                                   value="09:00">
+                        </div>
+                        
+                        <div class="form-group" id="timezone-group">
+                            <label class="form-label" for="timezone">Timezone</label>
+                            <select id="timezone" name="timezone" class="form-select">
+                                <option value="UTC" selected>UTC</option>
+                                <option value="America/New_York">Eastern Time</option>
+                                <option value="America/Chicago">Central Time</option>
+                                <option value="America/Denver">Mountain Time</option>
+                                <option value="America/Los_Angeles">Pacific Time</option>
+                                <option value="Europe/London">London</option>
+                                <option value="Europe/Berlin">Berlin</option>
+                                <option value="Asia/Tokyo">Tokyo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Date Selection for One-time -->
+                <div id="date-options" class="form-group" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="schedule_date">Date</label>
+                            <input type="date" 
+                                   id="schedule_date"
+                                   name="schedule_date" 
+                                   class="form-input"
+                                   min="">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Options -->
+                <div id="weekly-options" class="form-group" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Days of Week</label>
+                        <div class="checkbox-group-inline">
+                            <label class="checkbox-item-inline">
+                                <input type="checkbox" name="days_of_week" value="1" checked>
+                                Monday
+                            </label>
+                            <label class="checkbox-item-inline">
+                                <input type="checkbox" name="days_of_week" value="2">
+                                Tuesday
+                            </label>
+                            <label class="checkbox-item-inline">
+                                <input type="checkbox" name="days_of_week" value="3">
+                                Wednesday
+                            </label>
+                            <label class="checkbox-item-inline">
+                                <input type="checkbox" name="days_of_week" value="4">
+                                Thursday
+                            </label>
+                            <label class="checkbox-item-inline">
+                                <input type="checkbox" name="days_of_week" value="5">
+                                Friday
+                            </label>
+                            <label class="checkbox-item-inline">
+                                <input type="checkbox" name="days_of_week" value="6">
+                                Saturday
+                            </label>
+                            <label class="checkbox-item-inline">
+                                <input type="checkbox" name="days_of_week" value="0">
+                                Sunday
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Options -->
+                <div id="monthly-options" class="form-group" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="day_of_month">Day of Month</label>
+                            <select id="day_of_month" name="day_of_month" class="form-select">
+                                <option value="1" selected>1st</option>
+                                <option value="15">15th</option>
+                                <option value="last">Last day</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sources Selection -->
+                <div class="form-group">
+                    <label class="form-label">Sources</label>
+                    <div class="checkbox-group-inline">
+                        <label class="checkbox-item-inline">
+                            <input type="checkbox" name="schedule_sources" value="indeed" checked>
+                            Indeed
+                        </label>
+                        <label class="checkbox-item-inline">
+                            <input type="checkbox" name="schedule_sources" value="glassdoor" checked>
+                            Glassdoor
+                        </label>
+                        <label class="checkbox-item-inline">
+                            <input type="checkbox" name="schedule_sources" value="linkedin">
+                            LinkedIn
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-actions-minimal">
+                    <button type="submit" class="btn btn-outline">
+                        <i class="fas fa-calendar-plus"></i> Schedule Scraping
+                    </button>
+                    <button type="button" class="btn btn-secondary" 
+                            hx-get="{% url 'jobs:scheduled_tasks' %}"
+                            hx-target="#schedule-results">
+                        <i class="fas fa-list"></i> View Scheduled
+                    </button>
+                </div>
+            </form>
+            
+            <div id="schedule-results"></div>
+        </div>
+    </div>
+    
+    <!-- Last Scan Summary -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i class="fas fa-history"></i> Last Scan Summary
+            </h2>
+        </div>
+        <div class="card-content">
+            <div id="last-scan-summary">
+                {% if last_scan %}
+                    <div class="last-scan-card">
+                        <div class="scan-header">
+                            <div class="scan-title">{{ last_scan.search_query|default:"Recent Scan" }}</div>
+                            <div class="scan-time">{{ last_scan.created_at|timesince }} ago</div>
+                        </div>
+                        <div class="scan-stats">
+                            <div class="scan-stat">
+                                <span class="stat-number">{{ last_scan.jobs_found|default:0 }}</span>
+                                <span class="stat-label">Jobs Found</span>
                             </div>
-                        {% endfor %}
+                            <div class="scan-stat">
+                                <span class="stat-number">{{ last_scan.companies_found|default:0 }}</span>
+                                <span class="stat-label">Companies</span>
+                            </div>
+                            <div class="scan-stat">
+                                <span class="stat-number">{{ last_scan.duration|default:"0" }}s</span>
+                                <span class="stat-label">Duration</span>
+                            </div>
+                            <div class="scan-stat">
+                                <span class="stat-number">{{ last_scan.source|capfirst|default:"Indeed" }}</span>
+                                <span class="stat-label">Source</span>
+                            </div>
+                        </div>
+                        <div class="scan-actions">
+                            <a href="{% url 'jobs:jobs_list' %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-list"></i> View Jobs
+                            </a>
+                        </div>
                     </div>
                 {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-clock"></i>
-                        <p>No recent scraping activity. Start a scraping job to see results here.</p>
+                    <div class="empty-scan-state">
+                        <i class="fas fa-search"></i>
+                        <p>No scans performed yet. Start your first scan above!</p>
                     </div>
                 {% endif %}
             </div>
@@ -202,39 +367,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/dashboard.js' %}"></script>
-<script>
-// Scraper-specific JavaScript
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-refresh recent activity every 30 seconds
-    setInterval(() => {
-        if (document.visibilityState === 'visible') {
-            const refreshBtn = document.querySelector('[hx-target="#recent-activity"]');
-            if (refreshBtn) {
-                htmx.trigger(refreshBtn, 'click');
-            }
-        }
-    }, 30000);
-    
-    // Form validation
-    const scraperForm = document.querySelector('.scraper-form');
-    if (scraperForm) {
-        scraperForm.addEventListener('submit', function(e) {
-            const jobTitle = document.getElementById('job_title').value.trim();
-            const checkedSources = document.querySelectorAll('input[name="sources"]:checked');
-            
-            if (!jobTitle) {
-                e.preventDefault();
-                window.showNotification('Please enter a job title', 'error');
-                return false;
-            }
-            
-            if (checkedSources.length === 0) {
-                e.preventDefault();
-                window.showNotification('Please select at least one source', 'error');
-                return false;
-            }
-        });
-    }
-});
-</script>
+<script src="{% static 'js/scraper-control.js' %}"></script>
 {% endblock %}

@@ -22,7 +22,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('jobs.urls')),  # API URLs
-    path('', include('jobs.htmx_urls')),  # Frontend HTMX URLs
+    path('', include('jobs.frontend_urls')),  # Frontend URLs
     path('celery/', include('celery_tasks.urls')),  # Celery task URLs
 ]
 

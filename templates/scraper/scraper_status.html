@@ -32,7 +32,7 @@
                         {% if companies_found %}
                             <span class="detail-item">
                                 <i class="fas fa-building"></i>
-                                {{ companies_found }} new compan{{ companies_found|pluralize:"y,ies" }}
+                                {{ companies_found }} new {% if companies_found == 1 %}company{% else %}companies{% endif %}
                             </span>
                         {% endif %}
                     </div>

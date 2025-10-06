@@ -1,0 +1,39 @@
+<div class="scheduled-task-item">
+    <div class="task-info">
+        <div class="task-title">{{ task.name }}</div>
+        <div class="task-details">
+            Next run: {{ task.crontab.human_readable|default:"Soon" }} | 
+            Last run: {{ task.last_run_at|timesince|default:"Never" }} ago |
+            Status: {% if task.enabled %}<span class="status-enabled">Enabled</span>{% else %}<span class="status-disabled">Disabled</span>{% endif %}
+        </div>
+    </div>
+    <div class="task-actions">
+        <button class="btn btn-sm btn-outline" 
+                hx-post="{% url 'jobs:toggle_scheduled_task' task.id %}"
+                hx-target="closest .scheduled-task-item">
+            {% if task.enabled %}
+                <i class="fas fa-pause"></i> Disable
+            {% else %}
+                <i class="fas fa-play"></i> Enable
+            {% endif %}
+        </button>
+        <button class="btn btn-sm btn-danger" 
+                hx-delete="{% url 'jobs:delete_scheduled_task' task.id %}"
+                hx-target="closest .scheduled-task-item"
+                hx-confirm="Are you sure you want to delete this scheduled task?">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+</div>
+
+<style>
+.status-enabled {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.status-disabled {
+    color: var(--warning-color);
+    font-weight: 600;
+}
+</style>

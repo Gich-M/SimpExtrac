@@ -17,10 +17,6 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-brand">
-                <h1><i class="fas fa-search"></i> SimpExtrac</h1>
-                <span class="tech-badge">Django + HTMX</span>
-            </div>
             <ul class="nav-links">
                 <li><a href="{% url 'jobs:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
@@ -61,7 +57,6 @@
 
     <footer class="footer">
         <div class="footer-container">
-            <p>&copy; 2025 SimpExtrac. Built with Django + HTMX for modern reactive UIs.</p>
             <div class="footer-links">
                 <a href="/api/" target="_blank"><i class="fas fa-code"></i> API</a>
                 <a href="/admin/" target="_blank"><i class="fas fa-cog"></i> Admin</a>

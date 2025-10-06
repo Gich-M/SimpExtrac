@@ -17,9 +17,9 @@
         </h1>
         
         <form class="form" 
-              hx-post="{% url 'jobs:jobs_list' %}" 
+              hx-get="{% url 'jobs:jobs_list' %}" 
               hx-target="#jobs-results"
-              hx-trigger="submit, change from:select"
+              hx-trigger="submit, change from:select, keyup changed delay:300ms from:input[name='search']"
               data-search-form="jobs">
             {% csrf_token %}
             
@@ -31,9 +31,6 @@
                            class="form-input" 
                            placeholder="Search by title, company, description..."
                            value="{{ request.GET.search|default:'' }}"
-                           hx-get="{% url 'jobs:jobs_list' %}"
-                           hx-target="#jobs-results"
-                           hx-trigger="keyup changed delay:300ms"
                            autocomplete="off">
                 </div>
                 

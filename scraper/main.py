@@ -1,15 +1,81 @@
+"""
+Main scraper script - can be run standalone or imported by Django
+"""
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scraper.indeed_scraper import IndeedScraper
-from scraper.glassdoor_scraper import GlassdoorScraper  
-from scraper.company_info_extractor import CompanyInfoExtractor
-from scraper.data_manager import JobDataManager
+# Add the project root to the Python path for standalone execution
+if __name__ == '__main__':
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import logging
 import time
 
-def main_scraper():
+# Django setup for when running as script
+def setup_django():
+    """Setup Django environment if not already configured"""
+    try:
+        import django
+        from django.conf import settings
+        
+        if not settings.configured:
+            os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'simpextrac.settings')
+            django.setup()
+        return True
+    except ImportError:
+        # Django not available, run in standalone mode
+        return False
+
+# Check if Django is available
+DJANGO_AVAILABLE = setup_django()
+
+# Import scrapers (always available)
+try:
+    from .indeed_scraper import IndeedScraper
+    from .glassdoor_scraper import GlassdoorScraper
+    from .linkedin_scraper import LinkedInScraper
+    from .company_info_extractor import CompanyInfoExtractor
+    from .data_manager import JobDataManager
+except ImportError:
+    # Standalone mode imports
+    from indeed_scraper import IndeedScraper
+    from glassdoor_scraper import GlassdoorScraper
+    from linkedin_scraper import LinkedInScraper
+    from company_info_extractor import CompanyInfoExtractor
+    from data_manager import JobDataManager
+
+# Try to import Django components (optional)
+try:
+    if DJANGO_AVAILABLE:
+        from .tasks import run_scraper_task
+except ImportError:
+    run_scraper_task = None
+
+
+def run_django_scraper(job_title, location, sources=['indeed'], max_jobs=25):
+    """
+    Run scraper using Django integration (saves to database)
+    """
+    if not DJANGO_AVAILABLE or not run_scraper_task:
+        raise RuntimeError("Django integration not available")
+    
+    results = []
+    for source in sources:
+        result = run_scraper_task(
+            job_title=job_title,
+            location=location,
+            source=source,
+            max_jobs=max_jobs // len(sources)
+        )
+        results.append(result)
+    
+    return results
+
+
+def run_standalone_scraper(job_title="Python Developer", location="Remote", max_jobs_per_source=20):
+    """
+    Original standalone scraper (saves to JSON files)
+    """
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s'
@@ -17,14 +83,8 @@ def main_scraper():
 
     indeed_scraper = IndeedScraper(fetch_descriptions=True)
     glassdoor_scraper = GlassdoorScraper()
-    company_extractor = CompanyInfoExtractor(use_selenium=False)  # Use requests for faster processing
+    company_extractor = CompanyInfoExtractor(use_selenium=False)
     data_manager = JobDataManager("data/jobs.json")
-
-    # job_title = input("Enter the job title to search for: ")
-    # location = input("Enter the job location you are looking for: ")
-    job_title = "Python Developer"
-    location = "Remote"
-    max_jobs_per_source = 20  # Increased to get more jobs from first page
 
     all_jobs = []
 
@@ -144,7 +204,9 @@ def main_scraper():
     finally:
         company_extractor.cleanup()
 
+
 def search_existing_jobs():
+    """Search existing jobs from JSON data"""
     data_manager = JobDataManager("data/jobs.json")
     filters = {
         'location': 'remote',
@@ -157,7 +219,72 @@ def search_existing_jobs():
     for job in filtered_jobs[:5]:
         print(f"- {job.get('title')} at {job.get('company')} ({job.get('location')})")
 
-if __name__ == '__main__':
-    jobs = main_scraper()
 
-    search_existing_jobs()
+# Convenience functions for different use cases
+def scrape_jobs(job_title, location, sources=['indeed'], max_jobs=25, use_django=None):
+    """
+    Main scraper function that chooses between Django and standalone mode
+    
+    Args:
+        job_title: Job title to search for
+        location: Location to search in
+        sources: List of sources to scrape
+        max_jobs: Maximum number of jobs per source
+        use_django: Force Django mode (True), standalone mode (False), or auto-detect (None)
+    """
+    if use_django is None:
+        use_django = DJANGO_AVAILABLE and run_scraper_task is not None
+    
+    if use_django:
+        logging.info("Running in Django mode (database storage)")
+        return run_django_scraper(job_title, location, sources, max_jobs)
+    else:
+        logging.info("Running in standalone mode (JSON file storage)")
+        if len(sources) > 1:
+            logging.warning("Standalone mode doesn't support multiple sources efficiently. Using Indeed only.")
+        return run_standalone_scraper(job_title, location, max_jobs)
+
+
+if __name__ == '__main__':
+    """
+    Script execution entry point
+    """
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Job Scraper')
+    parser.add_argument('--title', default='Python Developer', help='Job title to search for')
+    parser.add_argument('--location', default='Remote', help='Location to search in')
+    parser.add_argument('--sources', nargs='+', default=['indeed'], choices=['indeed', 'glassdoor', 'linkedin'], help='Sources to scrape')
+    parser.add_argument('--max-jobs', type=int, default=25, help='Maximum jobs per source')
+    parser.add_argument('--mode', choices=['django', 'standalone', 'auto'], default='auto', help='Execution mode')
+    parser.add_argument('--search', action='store_true', help='Search existing jobs instead of scraping')
+    
+    args = parser.parse_args()
+    
+    if args.search:
+        search_existing_jobs()
+    else:
+        use_django = {
+            'django': True,
+            'standalone': False,
+            'auto': None
+        }[args.mode]
+        
+        print(f"Starting scraper for '{args.title}' in '{args.location}'")
+        print(f"Sources: {', '.join(args.sources)}")
+        print(f"Max jobs per source: {args.max_jobs}")
+        print(f"Mode: {args.mode}")
+        print("-" * 50)
+        
+        results = scrape_jobs(
+            job_title=args.title,
+            location=args.location,
+            sources=args.sources,
+            max_jobs=args.max_jobs,
+            use_django=use_django
+        )
+        
+        if results:
+            print(f"\nScraping completed! Check the output above for details.")
+        else:
+            print(f"\nScraping failed or returned no results.")

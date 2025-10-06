@@ -60,139 +60,99 @@
     </div>
 
     <div class="grid grid-2">
-        <!-- Recent Jobs -->
+        <!-- Data Visualization: Sources Distribution -->
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">
-                    <i class="fas fa-briefcase"></i> Recent Jobs
+                    <i class="fas fa-chart-pie"></i> Jobs by Source
                 </h2>
-                <div class="flex items-center gap-2">
-                    <span class="auto-refresh-indicator" data-refresh-indicator="jobs">
-                        <i class="fas fa-sync-alt"></i> Auto-refresh
-                    </span>
-                    <a href="{% url 'jobs:jobs_list' %}" class="btn btn-primary">View All</a>
+                <div class="auto-refresh-indicator" data-refresh-indicator="charts">
+                    <i class="fas fa-sync-alt"></i> Auto-refresh
                 </div>
             </div>
             <div class="card-content">
-                {% if recent_jobs %}
-                    <div class="job-list" 
-                         id="recent-jobs-list"
-                         data-refresh-key="jobs">
-                        {% for job in recent_jobs %}
-                            <div class="job-card-mini" 
-                                 hx-get="{% url 'jobs:job_detail' job.pk %}"
-                                 hx-target="#job-detail-modal .modal-content"
-                                 hx-trigger="click"
-                                 data-job-id="{{ job.pk }}">
-                                <div class="job-title-mini">{{ job.title }}</div>
-                                <div class="job-company-mini">{{ job.company.name }}</div>
-                                <div class="job-meta-mini">
-                                    <span><i class="fas fa-map-marker-alt"></i> {{ job.location|default:"Remote" }}</span>
-                                    <span><i class="fas fa-calendar"></i> {{ job.created_at|date:"M d" }}</span>
-                                    <span class="tag tag-primary">{{ job.source|capfirst }}</span>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="empty-state">
-                        <i class="fas fa-briefcase"></i>
-                        <p>No jobs yet. Start scraping to see recent jobs here.</p>
-                        <a href="{% url 'jobs:scraper_control' %}" class="btn btn-primary">
-                            <i class="fas fa-robot"></i> Start Scraping
-                        </a>
-                    </div>
-                {% endif %}
+                <div class="chart-container">
+                    <canvas id="sourcesChart" width="400" height="200"></canvas>
+                </div>
+                <div class="chart-legend" id="sourcesLegend">
+                    <!-- Legend will be populated by JavaScript -->
+                </div>
             </div>
         </div>
 
-        <!-- Quick Search -->
+        <!-- Data Visualization: Recent Activity -->
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">
-                    <i class="fas fa-search"></i> Quick Search
+                    <i class="fas fa-chart-line"></i> Scraping Activity (Last 7 Days)
                 </h2>
             </div>
             <div class="card-content">
-                <form class="search-form" 
-                      action="{% url 'jobs:jobs_list' %}" 
-                      method="post"
-                      data-search-form="true">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <input type="text" 
-                               name="search" 
-                               class="form-input" 
-                               placeholder="Search jobs, companies, locations..."
-                               autocomplete="off"
-                               data-search-input="true">
-                        <div id="search-suggestions" class="search-suggestions hidden"></div>
+                <div class="chart-container">
+                    <canvas id="activityChart" width="400" height="200"></canvas>
+                </div>
+                <div class="activity-summary">
+                    <div class="activity-stat">
+                        <span class="activity-number">{{ stats.jobs_today|default:"0" }}</span>
+                        <span class="activity-label">Today</span>
                     </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <select name="source" class="form-select">
-                                <option value="">All Sources</option>
-                                <option value="indeed">Indeed</option>
-                                <option value="glassdoor">Glassdoor</option>
-                                <option value="linkedin">LinkedIn</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <input type="text" name="location" class="form-input" placeholder="Location">
-                        </div>
+                    <div class="activity-stat">
+                        <span class="activity-number">{{ stats.total_jobs|default:"0" }}</span>
+                        <span class="activity-label">Total</span>
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i> Search Jobs
-                    </button>
-                </form>
-                
-                <div id="search-results" class="search-results"></div>
+                    <div class="activity-stat">
+                        <span class="activity-number">{{ stats.total_companies|default:"0" }}</span>
+                        <span class="activity-label">Companies</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
-                <i class="fas fa-bolt"></i> Quick Actions
-            </h2>
+    <!-- Data Visualization: Top Companies and Locations -->
+    <div class="grid grid-2">
+        <!-- Top Companies -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-building"></i> Top Companies
+                </h2>
+                <a href="{% url 'jobs:companies_list' %}" class="btn btn-primary">View All</a>
+            </div>
+            <div class="card-content">
+                <div class="top-companies-chart">
+                    <canvas id="companiesChart" width="400" height="250"></canvas>
+                </div>
+            </div>
         </div>
-        <div class="card-content">
-            <div class="quick-actions">
-                <button class="btn btn-primary" 
-                        hx-post="{% url 'jobs:scraper_control' %}"
-                        hx-target="#scraper-results"
-                        hx-include="[data-scraper-param]"
-                        data-action="start-scrape">
-                    <i class="fas fa-robot"></i> Start Quick Scrape
-                </button>
-                
-                <a href="{% url 'jobs:jobs_list' %}" class="btn btn-secondary">
-                    <i class="fas fa-list"></i> Browse All Jobs
-                </a>
-                
-                <a href="{% url 'jobs:companies_list' %}" class="btn btn-secondary">
-                    <i class="fas fa-building"></i> View Companies
-                </a>
-                
-                <button class="btn btn-success" 
-                        data-manual-refresh=".stats-grid"
-                        onclick="window.SimpExtrac.Dashboard.manualRefresh('.stats-grid')">
-                    <i class="fas fa-sync-alt"></i> Refresh Stats
-                </button>
+
+        <!-- Location Heatmap -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-map-marked-alt"></i> Job Locations
+                </h2>
             </div>
-            
-            <!-- Configuration data -->
-            <div class="hidden-form-data">
-                <input name="job_title" value="Python Developer" data-scraper-param>
-                <input name="location" value="Remote" data-scraper-param>
-                <input name="num_jobs" value="10" data-scraper-param>
+            <div class="card-content">
+                <div class="location-chart">
+                    <canvas id="locationsChart" width="400" height="250"></canvas>
+                </div>
+                <div class="location-summary">
+                    <div class="location-stats">
+                        {% for location_stat in top_locations_list %}
+                            <div class="location-item">
+                                <span class="location-name">{{ location_stat.location|default:"Remote" }}</span>
+                                <span class="location-count">{{ location_stat.count }}</span>
+                            </div>
+                        {% empty %}
+                            <div class="empty-state-mini">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <p>No location data yet</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
-            
-            <div id="scraper-results" class="mt-3"></div>
         </div>
     </div>
 </div>
@@ -211,5 +171,31 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Chart.js for data visualizations -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'js/dashboard.js' %}"></script>
+<script src="{% static 'js/dashboard-charts.js' %}"></script>
+
+<!-- Chart data stored in data attributes to avoid template syntax in JavaScript -->
+<script id="chart-data" type="application/json"
+        data-sources="{{ source_stats|escapejs }}"
+        data-activity="{{ activity_data|escapejs }}"
+        data-companies="{{ top_companies|escapejs }}"
+        data-locations="{{ top_locations|escapejs }}">
+</script>
+
+<script>
+// Initialize Dashboard Charts using external module
+document.addEventListener('DOMContentLoaded', function() {
+    const chartDataScript = document.getElementById('chart-data');
+    const chartData = {
+        sources: JSON.parse(chartDataScript.dataset.sources),
+        activity: JSON.parse(chartDataScript.dataset.activity),
+        companies: JSON.parse(chartDataScript.dataset.companies),
+        locations: JSON.parse(chartDataScript.dataset.locations)
+    };
+    
+    initializeDashboardCharts(chartData);
+});
+</script>
 {% endblock %}

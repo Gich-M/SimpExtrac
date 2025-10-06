@@ -1,0 +1,73 @@
+{% load schedule_filters %}
+
+<div class="scheduled-tasks-list">
+    {% if tasks %}
+        <h4>Active Scheduled Tasks</h4>
+        {% for task in tasks %}
+            <div class="scheduled-task-item">
+                <div class="task-info">
+                    <div class="task-title">{{ task.name }}</div>
+                    <div class="task-details">
+                        {% if task.crontab %}
+                            <span class="schedule-info">
+                                <i class="fas fa-clock"></i>
+                                {% if task.crontab.minute == '*' and task.crontab.hour == '*' %}
+                                    Every minute
+                                {% elif task.crontab.hour == '*' %}
+                                    Every hour at :{{ task.crontab.minute|stringformat:"02d" }}
+                                {% elif task.crontab.day_of_week == '*' and task.crontab.day_of_month == '*' %}
+                                    Daily at {{ task.crontab.hour|stringformat:"02d" }}:{{ task.crontab.minute|stringformat:"02d" }}
+                                {% elif task.crontab.day_of_month == '*' %}
+                                    Weekly on 
+                                    {% for day in task.crontab.day_of_week|split:"," %}
+                                        {% if day == '0' %}Sun{% elif day == '1' %}Mon{% elif day == '2' %}Tue{% elif day == '3' %}Wed{% elif day == '4' %}Thu{% elif day == '5' %}Fri{% elif day == '6' %}Sat{% endif %}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                    at {{ task.crontab.hour|stringformat:"02d" }}:{{ task.crontab.minute|stringformat:"02d" }}
+                                {% else %}
+                                    Monthly on day {{ task.crontab.day_of_month }} at {{ task.crontab.hour|stringformat:"02d" }}:{{ task.crontab.minute|stringformat:"02d" }}
+                                {% endif %}
+                            </span>
+                        {% elif task.interval %}
+                            <span class="schedule-info">
+                                <i class="fas fa-repeat"></i>
+                                Every {{ task.interval.every }} {{ task.interval.get_period_display|lower }}
+                            </span>
+                        {% endif %}
+                        <br>
+                        <span class="task-status">
+                            Last run: {{ task.last_run_at|timesince|default:"Never" }} ago |
+                            Status: 
+                            {% if task.enabled %}
+                                <span class="status-enabled">Active</span>
+                            {% else %}
+                                <span class="status-disabled">Paused</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button class="btn btn-sm btn-outline" 
+                            hx-post="{% url 'jobs:toggle_scheduled_task' task.id %}"
+                            hx-target="closest .scheduled-task-item">
+                        {% if task.enabled %}
+                            <i class="fas fa-pause"></i> Disable
+                        {% else %}
+                            <i class="fas fa-play"></i> Enable
+                        {% endif %}
+                    </button>
+                    <button class="btn btn-sm btn-danger" 
+                            hx-delete="{% url 'jobs:delete_scheduled_task' task.id %}"
+                            hx-target="closest .scheduled-task-item"
+                            hx-confirm="Are you sure you want to delete this scheduled task?">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-schedule-state">
+            <i class="fas fa-calendar-plus"></i>
+            <p>No scheduled tasks yet. Create your first scheduled scan above!</p>
+        </div>
+    {% endif %}
+</div>

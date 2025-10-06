@@ -15,7 +15,8 @@ if not settings.configured:
 
 from jobs.models import Job, Company
 from .indeed_scraper import IndeedScraper
-from .glassdoor_scraper import GlassdoorScraper  
+from .glassdoor_scraper import GlassdoorScraper
+from .linkedin_scraper import LinkedInScraper
 from .company_info_extractor import CompanyInfoExtractor
 from .models import ScraperStats
 
@@ -29,7 +30,7 @@ def run_scraper_task(job_title, location, source='indeed', max_jobs=25):
     Args:
         job_title: Job title to search for
         location: Location to search in  
-        source: Source to scrape ('indeed', 'glassdoor')
+        source: Source to scrape ('indeed', 'glassdoor', 'linkedin')
         max_jobs: Maximum number of jobs to scrape
         
     Returns:
@@ -58,7 +59,8 @@ def run_scraper_task(job_title, location, source='indeed', max_jobs=25):
         # Initialize scrapers
         scrapers = {
             'indeed': lambda: IndeedScraper(fetch_descriptions=True),
-            'glassdoor': lambda: GlassdoorScraper()
+            'glassdoor': lambda: GlassdoorScraper(),
+            'linkedin': lambda: LinkedInScraper()
         }
         
         if source not in scrapers:
@@ -122,6 +124,7 @@ def run_scraper_task(job_title, location, source='indeed', max_jobs=25):
                         'description': job_data.get('description', ''),
                         'salary': job_data.get('salary', ''),
                         'source': source.title(),
+                        'scraped_at': timezone.now(),
                     }
                 )
                 

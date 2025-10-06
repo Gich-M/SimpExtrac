@@ -1,0 +1,28 @@
+<div class="schedule-error">
+    <div class="error-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <h4>Scheduling Failed</h4>
+    <p>{{ error }}</p>
+</div>
+
+<style>
+.schedule-error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+}
+
+.error-icon {
+    color: var(--danger-color);
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-error h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--danger-color);
+}
+</style>

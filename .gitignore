@@ -2,10 +2,18 @@
 __pycache__/
 *.pyc
 
+# Django
+db.sqlite3
+db.sqlite3-journal
+*.log
+
 # Environment variables
 .env
 .venv
 env/
+
+# Static files
+staticfiles/
 
 # IDE
 .vscode/

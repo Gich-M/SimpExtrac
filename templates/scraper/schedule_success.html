@@ -1,0 +1,38 @@
+<div class="schedule-success">
+    <div class="success-icon">
+        <i class="fas fa-check-circle"></i>
+    </div>
+    <h4>Scheduled Successfully!</h4>
+    <p>Your scraping task for "{{ job_title }}" in {{ location }} has been scheduled to run {{ interval }}.</p>
+    <div class="task-details">
+        <strong>Task ID:</strong> {{ task.id }}<br>
+        <strong>Next Run:</strong> {{ task.last_run_at|default:"Soon" }}
+    </div>
+</div>
+
+<style>
+.schedule-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+}
+
+.success-icon {
+    color: var(--success-color);
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-success h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--success-color);
+}
+
+.task-details {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+</style>

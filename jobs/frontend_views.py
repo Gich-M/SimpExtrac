@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.views.generic import ListView, DetailView
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -30,6 +30,42 @@ class DashboardView(ListView):
             'companies_with_websites': Company.objects.exclude(company_website__isnull=True).exclude(company_website='').count(),
         }
         
+        # Data for visualizations
+        from django.db.models import Count
+        from datetime import timedelta
+        import json
+        
+        # Source distribution data
+        source_stats = (Job.objects.values('source')
+                       .annotate(count=Count('id'))
+                       .order_by('-count'))
+        context['source_stats'] = json.dumps(list(source_stats))
+        
+        # Top companies (for chart)
+        top_companies = (Job.objects.values('company__name')
+                        .annotate(count=Count('id'))
+                        .order_by('-count')[:10])
+        context['top_companies'] = json.dumps(list(top_companies))
+        
+        # Top locations (for chart)
+        top_locations_data = (Job.objects.values('location')
+                        .annotate(count=Count('id'))
+                        .order_by('-count')[:8])
+        context['top_locations'] = json.dumps(list(top_locations_data))
+        context['top_locations_list'] = list(top_locations_data)  # For template loop
+        
+        # Activity data for last 7 days
+        activity_data = []
+        for i in range(6, -1, -1):  # Last 7 days
+            date = timezone.now().date() - timedelta(days=i)
+            jobs_count = Job.objects.filter(created_at__date=date).count()
+            activity_data.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'date_label': date.strftime('%m/%d'),
+                'count': jobs_count
+            })
+        context['activity_data'] = json.dumps(activity_data)
+        
         # Recent activity
         context['recent_companies'] = Company.objects.order_by('-created_at')[:5]
         
@@ -47,8 +83,21 @@ class JobListView(ListView):
     def get_queryset(self):
         queryset = Job.objects.select_related('company').order_by('-created_at')
         
+        # Get filter parameters from GET only
+        search = self.request.GET.get('search', '').strip()
+        source = self.request.GET.get('source', '').strip()
+        location = self.request.GET.get('location', '').strip()
+        company = self.request.GET.get('company', '').strip()
+        
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"JobListView filters - search: '{search}', source: '{source}', location: '{location}', company: '{company}'")
+        
+        initial_count = queryset.count()
+        logger.info(f"Initial queryset count: {initial_count}")
+        
         # Search functionality
-        search = self.request.GET.get('search') or self.request.POST.get('search')
         if search:
             queryset = queryset.filter(
                 Q(title__icontains=search) |
@@ -56,19 +105,30 @@ class JobListView(ListView):
                 Q(description__icontains=search) |
                 Q(location__icontains=search)
             )
+            logger.info(f"After search filter '{search}': {queryset.count()}")
         
-        # Filters
-        source = self.request.GET.get('source') or self.request.POST.get('source')
+        # Source filter - handle case variations
         if source:
-            queryset = queryset.filter(source=source)
+            # Check what sources actually exist in the database
+            existing_sources = Job.objects.values_list('source', flat=True).distinct()
+            logger.info(f"Existing sources in DB: {list(existing_sources)}")
             
-        location = self.request.GET.get('location') or self.request.POST.get('location')
+            # Try case-insensitive matching
+            queryset = queryset.filter(source__iexact=source)
+            logger.info(f"After source filter '{source}' (case-insensitive): {queryset.count()}")
+            
+        # Location filter
         if location:
             queryset = queryset.filter(location__icontains=location)
+            logger.info(f"After location filter '{location}': {queryset.count()}")
             
-        company = self.request.GET.get('company') or self.request.POST.get('company')
+        # Company filter
         if company:
             queryset = queryset.filter(company__name__icontains=company)
+            logger.info(f"After company filter '{company}': {queryset.count()}")
+        
+        final_count = queryset.count()
+        logger.info(f"Final queryset count: {final_count}")
         
         return queryset
     
@@ -76,10 +136,6 @@ class JobListView(ListView):
         if self.request.htmx:
             return ['jobs/job_list_partial.html']
         return ['jobs/job_list.html']
-    
-    def post(self, request, *args, **kwargs):
-        """Handle HTMX POST requests for filtering"""
-        return self.get(request, *args, **kwargs)
 
 
 class JobDetailView(DetailView):
@@ -147,54 +203,314 @@ class CompanyDetailView(DetailView):
 
 @require_http_methods(["GET", "POST"])
 def scraper_control(request):
-    """HTMX-powered scraper control interface"""
-    from scraper.main import main_scraper
-    import threading
+    """HTMX-powered scraper control interface with modern loading indicators"""
     
-    if request.method == 'POST' and request.htmx:
+    if request.method == 'POST':
         job_title = request.POST.get('job_title', 'Python Developer')
         location = request.POST.get('location', 'Remote')
         num_jobs = int(request.POST.get('num_jobs', 10))
-        
-        # Start scraping in background thread
-        def run_scraper():
-            try:
-                main_scraper(job_title=job_title, location=location, num_jobs=num_jobs)
-                messages.success(request, f'Successfully scraped jobs for "{job_title}" in "{location}"')
-            except Exception as e:
-                messages.error(request, f'Scraping failed: {str(e)}')
-        
-        thread = threading.Thread(target=run_scraper)
-        thread.daemon = True
-        thread.start()
-        
-        messages.info(request, 'Scraping started! Check back in a few minutes.')
+        sources = request.POST.getlist('sources', ['indeed'])
         
         if request.htmx:
-            return render(request, 'scraper/scraper_status.html', {
-                'status': 'running',
-                'message': 'Scraping in progress...'
-            })
+            # For HTMX requests, show immediate feedback with modern UI
+            try:
+                # For manual scans, you can either:
+                # Option 1: Run immediately (blocking) for small jobs
+                if num_jobs <= 25:
+                    from scraper.tasks import run_scraper_task
+                    result = run_scraper_task(
+                        job_title=job_title, 
+                        location=location, 
+                        source=sources[0] if sources else 'indeed',  # Use first selected source
+                        max_jobs=num_jobs
+                    )
+                    
+                    # Return modern success result
+                    return render(request, 'scraper/scraper_results.html', {
+                        'status': 'success',
+                        'results': result,
+                        'search_params': {
+                            'job_title': job_title,
+                            'location': location,
+                            'num_jobs': num_jobs,
+                            'sources': sources
+                        }
+                    })
+                else:
+                    # Option 2: Use Celery for larger jobs
+                    try:
+                        from celery_tasks.tasks import scrape_jobs_task
+                        task = scrape_jobs_task.delay(
+                            job_title=job_title,
+                            location=location,
+                            sources=sources,
+                            max_jobs=num_jobs
+                        )
+                        
+                        # Return background task status
+                        return render(request, 'scraper/scraper_results.html', {
+                            'status': 'running',
+                            'task_id': task.id,
+                            'search_params': {
+                                'job_title': job_title,
+                                'location': location,
+                                'num_jobs': num_jobs,
+                                'sources': sources
+                            }
+                        })
+                    except Exception as e:
+                        # Return error result
+                        return render(request, 'scraper/scraper_results.html', {
+                            'status': 'error',
+                            'error_message': f'Failed to queue background job: {str(e)}',
+                            'search_params': {
+                                'job_title': job_title,
+                                'location': location,
+                                'num_jobs': num_jobs,
+                                'sources': sources
+                            }
+                        })
+                        
+            except Exception as e:
+                # Return error result
+                return render(request, 'scraper/scraper_results.html', {
+                    'status': 'error',
+                    'error_message': str(e),
+                    'search_params': {
+                        'job_title': job_title,
+                        'location': location,
+                        'num_jobs': num_jobs,
+                        'sources': sources
+                    }
+                })
+        else:
+            # Handle non-HTMX POST (redirect after POST)
+            messages.info(request, 'Scraping job submitted!')
+            return HttpResponseRedirect(request.path)
     
-    # Get recent scraping activity
-    recent_jobs = Job.objects.select_related('company').order_by('-created_at')[:10]
+    # GET request - show the scraper control page
+    # Get last scan summary
+    try:
+        from scraper.models import ScraperStats
+        last_scan = ScraperStats.objects.filter(
+            jobs_found__gt=0
+        ).order_by('-date').first()
+    except:
+        last_scan = None
     
-    # Statistics
-    stats = {
-        'total_jobs': Job.objects.count(),
-        'indeed_jobs': Job.objects.filter(source='indeed').count(),
-        'glassdoor_jobs': Job.objects.filter(source='glassdoor').count(),
-        'total_companies': Company.objects.count(),
-    }
-    
-    template = 'scraper/scraper_control.html'
-    if request.htmx:
-        template = 'scraper/scraper_control_partial.html'
-    
-    return render(request, template, {
-        'recent_jobs': recent_jobs,
-        'stats': stats
+    return render(request, 'scraper/scraper_control.html', {
+        'last_scan': last_scan
     })
+
+
+@require_http_methods(["POST"])
+def schedule_scraping(request):
+    """Schedule a recurring scraping task using Celery Beat with enhanced timing options"""
+    if not request.htmx:
+        return JsonResponse({'error': 'HTMX required'}, status=400)
+    
+    job_title = request.POST.get('job_title')
+    location = request.POST.get('location', 'Remote')
+    interval = request.POST.get('interval', 'daily')
+    schedule_time = request.POST.get('schedule_time', '09:00')
+    timezone = request.POST.get('timezone', 'UTC')
+    schedule_sources = request.POST.getlist('schedule_sources')
+    
+    if not schedule_sources:
+        schedule_sources = ['indeed']  # Default to indeed if none selected
+    
+    if not job_title:
+        return render(request, 'scraper/schedule_error.html', {
+            'error': 'Job title is required'
+        })
+    
+    try:
+        from django_celery_beat.models import PeriodicTask, CrontabSchedule, IntervalSchedule
+        from django.utils import timezone as django_tz
+        from datetime import datetime, timedelta
+        import json
+        
+        # Parse the time
+        time_parts = schedule_time.split(':')
+        hour = int(time_parts[0])
+        minute = int(time_parts[1])
+        
+        schedule = None
+        task_name = f"Scheduled Scrape: {job_title} in {location}"
+        
+        # Handle different interval types
+        if interval == 'custom':
+            custom_minutes = request.POST.get('custom_minutes')
+            if not custom_minutes:
+                return render(request, 'scraper/schedule_error.html', {
+                    'error': 'Custom interval minutes required'
+                })
+            
+            try:
+                minutes = int(custom_minutes)
+                if minutes < 1 or minutes > 1440:
+                    raise ValueError("Invalid range")
+            except ValueError:
+                return render(request, 'scraper/schedule_error.html', {
+                    'error': 'Custom interval must be between 1 and 1440 minutes'
+                })
+            
+            schedule, created = IntervalSchedule.objects.get_or_create(
+                every=minutes,
+                period=IntervalSchedule.MINUTES,
+            )
+            task_name += f" (every {minutes}min)"
+            
+        elif interval == '30min':
+            schedule, created = IntervalSchedule.objects.get_or_create(
+                every=30,
+                period=IntervalSchedule.MINUTES,
+            )
+            task_name += " (every 30min)"
+            
+        elif interval == 'hourly':
+            schedule, created = CrontabSchedule.objects.get_or_create(
+                minute=minute, hour='*',
+                day_of_week='*', day_of_month='*', month_of_year='*'
+            )
+            task_name += f" (hourly at :{minute:02d})"
+            
+        elif interval == 'daily':
+            schedule, created = CrontabSchedule.objects.get_or_create(
+                minute=minute, hour=hour,
+                day_of_week='*', day_of_month='*', month_of_year='*'
+            )
+            task_name += f" (daily at {hour:02d}:{minute:02d})"
+            
+        elif interval == 'weekly':
+            days_of_week = request.POST.getlist('days_of_week')
+            if not days_of_week:
+                days_of_week = ['1']  # Default to Monday
+            
+            days_str = ','.join(days_of_week)
+            schedule, created = CrontabSchedule.objects.get_or_create(
+                minute=minute, hour=hour,
+                day_of_week=days_str, day_of_month='*', month_of_year='*'
+            )
+            
+            day_names = {
+                '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed',
+                '4': 'Thu', '5': 'Fri', '6': 'Sat'
+            }
+            selected_days = [day_names[day] for day in days_of_week]
+            task_name += f" ({','.join(selected_days)} at {hour:02d}:{minute:02d})"
+            
+        elif interval == 'monthly':
+            day_of_month = request.POST.get('day_of_month', '1')
+            
+            if day_of_month == 'last':
+                # Last day of month (approximation using day 28-31)
+                schedule, created = CrontabSchedule.objects.get_or_create(
+                    minute=minute, hour=hour,
+                    day_of_week='*', day_of_month='28-31', month_of_year='*'
+                )
+                task_name += f" (last day at {hour:02d}:{minute:02d})"
+            else:
+                schedule, created = CrontabSchedule.objects.get_or_create(
+                    minute=minute, hour=hour,
+                    day_of_week='*', day_of_month=day_of_month, month_of_year='*'
+                )
+                task_name += f" ({day_of_month}th at {hour:02d}:{minute:02d})"
+                
+        elif interval == 'once':
+            # One-time task
+            schedule_date = request.POST.get('schedule_date')
+            if not schedule_date:
+                return render(request, 'scraper/schedule_error.html', {
+                    'error': 'Date is required for one-time scheduling'
+                })
+            
+            # Parse the datetime
+            schedule_datetime = datetime.strptime(f"{schedule_date} {schedule_time}", "%Y-%m-%d %H:%M")
+            
+            # Check if it's in the future
+            if schedule_datetime <= datetime.now():
+                return render(request, 'scraper/schedule_error.html', {
+                    'error': 'Scheduled time must be in the future'
+                })
+            
+            # For one-time tasks, create a crontab for the specific date/time
+            schedule, created = CrontabSchedule.objects.get_or_create(
+                minute=minute, hour=hour,
+                day_of_week='*', 
+                day_of_month=schedule_datetime.day, 
+                month_of_year=schedule_datetime.month
+            )
+            task_name += f" (once on {schedule_date} at {hour:02d}:{minute:02d})"
+            
+        else:
+            return render(request, 'scraper/schedule_error.html', {
+                'error': 'Invalid interval type'
+            })
+        
+        # Check if task already exists
+        if PeriodicTask.objects.filter(name=task_name).exists():
+            return render(request, 'scraper/schedule_error.html', {
+                'error': 'A scheduled task with this configuration already exists'
+            })
+        
+        # Create the periodic task
+        periodic_task = PeriodicTask.objects.create(
+            name=task_name,
+            task='celery_tasks.tasks.scrape_jobs_task',
+            args=json.dumps([]),
+            kwargs=json.dumps({
+                'job_title': job_title,
+                'location': location,
+                'sources': schedule_sources,
+                'max_jobs': 25
+            }),
+            enabled=True
+        )
+        
+        # Assign the appropriate schedule
+        if interval in ['custom', '30min']:
+            periodic_task.interval = schedule
+        else:
+            periodic_task.crontab = schedule
+        
+        periodic_task.save()
+        
+        return render(request, 'scraper/schedule_success.html', {
+            'task': periodic_task,
+            'job_title': job_title,
+            'location': location,
+            'interval': interval
+        })
+        
+    except Exception as e:
+        return render(request, 'scraper/schedule_error.html', {
+            'error': f'Failed to schedule task: {str(e)}'
+        })
+
+
+@require_http_methods(["GET"])
+def scheduled_tasks(request):
+    """Get list of scheduled scraping tasks"""
+    if not request.htmx:
+        return JsonResponse({'error': 'HTMX required'}, status=400)
+    
+    try:
+        from django_celery_beat.models import PeriodicTask
+        
+        tasks = PeriodicTask.objects.filter(
+            task='celery_tasks.tasks.scrape_jobs_task',
+            enabled=True
+        ).order_by('-date_changed')
+        
+        return render(request, 'scraper/scheduled_tasks.html', {
+            'tasks': tasks
+        })
+        
+    except Exception as e:
+        return render(request, 'scraper/schedule_error.html', {
+            'error': f'Failed to load scheduled tasks: {str(e)}'
+        })
 
 
 @require_http_methods(["GET"])
@@ -268,3 +584,49 @@ def toggle_job_favorite(request, job_id):
     # job.save()
     
     return render(request, 'components/favorite_button.html', {'job': job})
+
+
+@require_http_methods(["POST"])
+def toggle_scheduled_task(request, task_id):
+    """HTMX endpoint to toggle scheduled task enabled/disabled"""
+    if not request.htmx:
+        return JsonResponse({'error': 'HTMX required'}, status=400)
+    
+    try:
+        from django_celery_beat.models import PeriodicTask
+        
+        task = get_object_or_404(PeriodicTask, id=task_id)
+        task.enabled = not task.enabled
+        task.save()
+        
+        action = "enabled" if task.enabled else "disabled"
+        messages.success(request, f'Task "{task.name}" {action} successfully')
+        
+        return render(request, 'scraper/scheduled_task_item.html', {'task': task})
+        
+    except Exception as e:
+        return render(request, 'scraper/schedule_error.html', {
+            'error': f'Failed to toggle task: {str(e)}'
+        })
+
+
+@require_http_methods(["DELETE"])
+def delete_scheduled_task(request, task_id):
+    """HTMX endpoint to delete a scheduled task"""
+    if not request.htmx:
+        return JsonResponse({'error': 'HTMX required'}, status=400)
+    
+    try:
+        from django_celery_beat.models import PeriodicTask
+        
+        task = get_object_or_404(PeriodicTask, id=task_id)
+        task_name = task.name
+        task.delete()
+        
+        messages.success(request, f'Scheduled task "{task_name}" deleted successfully')
+        return HttpResponse('')  # Empty response triggers HTMX to remove the element
+        
+    except Exception as e:
+        return render(request, 'scraper/schedule_error.html', {
+            'error': f'Failed to delete task: {str(e)}'
+        })

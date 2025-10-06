@@ -1,0 +1,66 @@
+<!-- Scraper Statistics -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i class="fas fa-chart-bar"></i> Scraping Statistics
+        </h2>
+    </div>
+    <div class="card-content">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">{{ stats.total_jobs }}</div>
+                <div class="stat-label">Total Jobs</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ stats.indeed_jobs }}</div>
+                <div class="stat-label">Indeed Jobs</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ stats.glassdoor_jobs }}</div>
+                <div class="stat-label">Glassdoor Jobs</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ stats.total_companies }}</div>
+                <div class="stat-label">Companies</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Scraping Activity -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <i class="fas fa-history"></i> Recent Scraping Activity
+        </h2>
+    </div>
+    <div class="card-content">
+        {% if recent_jobs %}
+            <div class="recent-jobs-grid">
+                {% for job in recent_jobs %}
+                    <div class="recent-job-card">
+                        <div class="job-info">
+                            <h4 class="job-title">{{ job.title }}</h4>
+                            <div class="job-company">{{ job.company.name }}</div>
+                            <div class="job-meta">
+                                <span>{{ job.location|default:"Remote" }}</span>
+                                <span>{{ job.source|capfirst }}</span>
+                                <span>{{ job.created_at|timesince }} ago</span>
+                            </div>
+                        </div>
+                        <div class="job-actions">
+                            <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                <i class="fas fa-external-link-alt"></i> View
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-clock"></i>
+                <p>No recent scraping activity. Start a scraping job to see results here.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
