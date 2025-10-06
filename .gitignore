@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+.venv
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+.coverage
+.pytest_cache/
+
+# pyenv
+.python-version
+
+# Backup files
+*.bak
+*.backup
+*.orig
