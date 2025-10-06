@@ -1,0 +1,178 @@
+<!-- Job Detail Modal Content - HTMX Partial -->
+<div class="modal-header">
+    <h2 class="modal-title">
+        <i class="fas fa-briefcase"></i>
+        {{ job.title }}
+    </h2>
+    <button class="btn btn-secondary modal-close" 
+            onclick="window.SimpExtrac.Dashboard.hideModal(document.getElementById('job-detail-modal'))">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+
+<div class="modal-body">
+    <!-- Company Info -->
+    <div class="company-section">
+        <div class="company-header">
+            <h3 class="company-name">
+                <i class="fas fa-building"></i>
+                {{ job.company.name }}
+            </h3>
+            {% if job.company.company_website %}
+                <a href="{{ job.company.company_website }}" 
+                   target="_blank" 
+                   class="btn btn-secondary">
+                    <i class="fas fa-globe"></i> Visit Website
+                </a>
+            {% endif %}
+        </div>
+        
+        {% if job.company.description %}
+            <div class="company-description">
+                {{ job.company.description|truncatewords:50 }}
+            </div>
+        {% endif %}
+        
+        <div class="company-meta">
+            {% if job.company.industry %}
+                <span class="tag">
+                    <i class="fas fa-industry"></i>
+                    {{ job.company.industry }}
+                </span>
+            {% endif %}
+            {% if job.company.employee_count %}
+                <span class="tag">
+                    <i class="fas fa-users"></i>
+                    {{ job.company.employee_count }} employees
+                </span>
+            {% endif %}
+            {% if job.company.company_email %}
+                <span class="tag">
+                    <i class="fas fa-envelope"></i>
+                    {{ job.company.company_email }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Job Details -->
+    <div class="job-details-section">
+        <h3 class="section-title">
+            <i class="fas fa-info-circle"></i>
+            Job Details
+        </h3>
+        
+        <div class="job-meta-grid">
+            <div class="meta-item">
+                <span class="meta-label">
+                    <i class="fas fa-map-marker-alt"></i>
+                    Location
+                </span>
+                <span class="meta-value">{{ job.location|default:"Remote" }}</span>
+            </div>
+            
+            {% if job.salary %}
+                <div class="meta-item">
+                    <span class="meta-label">
+                        <i class="fas fa-dollar-sign"></i>
+                        Salary
+                    </span>
+                    <span class="meta-value">{{ job.salary }}</span>
+                </div>
+            {% endif %}
+            
+            <div class="meta-item">
+                <span class="meta-label">
+                    <i class="fas fa-external-link-alt"></i>
+                    Source
+                </span>
+                <span class="meta-value">{{ job.source|capfirst }}</span>
+            </div>
+            
+            <div class="meta-item">
+                <span class="meta-label">
+                    <i class="fas fa-calendar"></i>
+                    Posted
+                </span>
+                <span class="meta-value">{{ job.created_at|timesince }} ago</span>
+            </div>
+            
+            <div class="meta-item">
+                <span class="meta-label">
+                    <i class="fas fa-clock"></i>
+                    Scraped
+                </span>
+                <span class="meta-value">{{ job.scraped_at|timesince }} ago</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Description -->
+    {% if job.description %}
+        <div class="job-description-section">
+            <h3 class="section-title">
+                <i class="fas fa-file-text"></i>
+                Description
+            </h3>
+            <div class="job-description-content">
+                {{ job.description|linebreaks }}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Related Jobs -->
+    <div class="related-jobs-section">
+        <h3 class="section-title">
+            <i class="fas fa-list"></i>
+            Other Jobs at {{ job.company.name }}
+        </h3>
+        
+        {% with company_jobs=job.company.jobs.all|slice:":5" %}
+            {% if company_jobs %}
+                <div class="related-jobs-grid">
+                    {% for related_job in company_jobs %}
+                        {% if related_job.id != job.id %}
+                            <div class="related-job-card">
+                                <div class="related-job-title">{{ related_job.title }}</div>
+                                <div class="related-job-meta">
+                                    <span>{{ related_job.location|default:"Remote" }}</span>
+                                    <span>{{ related_job.created_at|timesince }} ago</span>
+                                </div>
+                                <a href="{{ related_job.url }}" target="_blank" class="btn btn-sm btn-secondary">
+                                    View Job
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-secondary">No other jobs found at this company.</p>
+            {% endif %}
+        {% endwith %}
+    </div>
+</div>
+
+<div class="modal-footer">
+    <a href="{{ job.url }}" 
+       target="_blank" 
+       class="btn btn-primary">
+        <i class="fas fa-external-link-alt"></i>
+        Apply on {{ job.source|capfirst }}
+    </a>
+    
+    {% if job.company.company_website %}
+        <a href="{{ job.company.company_website }}" 
+           target="_blank" 
+           class="btn btn-secondary">
+            <i class="fas fa-globe"></i>
+            Company Website
+        </a>
+    {% endif %}
+    
+    <button class="btn btn-secondary" 
+            onclick="window.SimpExtrac.Dashboard.hideModal(document.getElementById('job-detail-modal'))">
+        <i class="fas fa-times"></i>
+        Close
+    </button>
+</div>
+

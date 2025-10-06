@@ -1,0 +1,187 @@
+<!-- Company Results Section - HTMX Partial -->
+<div class="companies-results-header">
+    <div class="results-info">
+        <h2 class="results-count">
+            {% if companies %}
+                {{ companies.paginator.count }} compan{{ companies.paginator.count|pluralize:"y,ies" }} found
+            {% else %}
+                No companies found
+            {% endif %}
+        </h2>
+        {% if request.GET.search %}
+            <div class="active-filters">
+                <span class="filter-label">Active filters:</span>
+                <span class="tag">Search: "{{ request.GET.search }}"</span>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="results-actions">
+        <button class="btn btn-success" 
+                hx-get="{% url 'jobs:companies_list' %}?{{ request.GET.urlencode }}"
+                hx-target="#companies-results">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+</div>
+
+{% if companies %}
+    <!-- Company Cards -->
+    <div class="companies-grid">
+        {% for company in companies %}
+            <div class="company-card">
+                
+                <div class="company-header">
+                    <h3 class="company-name">
+                        <i class="fas fa-building"></i>
+                        {{ company.name }}
+                    </h3>
+                    <div class="company-job-count">
+                        <span class="tag tag-primary">
+                            {{ company.job_count }} job{{ company.job_count|pluralize }}
+                        </span>
+                    </div>
+                </div>
+                
+                {% if company.description %}
+                    <div class="company-description">
+                        {{ company.description|truncatewords:25 }}
+                    </div>
+                {% endif %}
+                
+                <div class="company-meta">
+                    {% if company.industry %}
+                        <span class="company-industry">
+                            <i class="fas fa-industry"></i>
+                            {{ company.industry }}
+                        </span>
+                    {% endif %}
+                    {% if company.employee_count %}
+                        <span class="company-size">
+                            <i class="fas fa-users"></i>
+                            {{ company.employee_count }} employees
+                        </span>
+                    {% endif %}
+                    <span class="company-added">
+                        <i class="fas fa-calendar"></i>
+                        Added {{ company.created_at|timesince }} ago
+                    </span>
+                </div>
+                
+                <div class="company-contact">
+                    {% if company.company_website %}
+                        <a href="{{ company.company_website }}" 
+                           target="_blank" 
+                           class="company-contact-item">
+                            <i class="fas fa-globe"></i>
+                            Website
+                        </a>
+                    {% endif %}
+                    {% if company.company_email %}
+                        <a href="mailto:{{ company.company_email }}" 
+                           class="company-contact-item">
+                            <i class="fas fa-envelope"></i>
+                            {{ company.company_email }}
+                        </a>
+                    {% endif %}
+                </div>
+                
+                <div class="company-actions">
+                    <a href="{% url 'jobs:jobs_list' %}?company={{ company.name|urlencode }}" 
+                       class="btn btn-primary">
+                        <i class="fas fa-briefcase"></i> View Jobs ({{ company.job_count }})
+                    </a>
+                    {% if company.company_website %}
+                        <a href="{{ company.company_website }}" 
+                           target="_blank" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-external-link-alt"></i> Visit Website
+                        </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Recent Jobs Preview -->
+                {% if company.jobs.all %}
+                    <div class="company-recent-jobs">
+                        <h4 class="recent-jobs-title">Recent Jobs:</h4>
+                        <div class="recent-jobs-list">
+                            {% for job in company.jobs.all|slice:":3" %}
+                                <div class="recent-job-item">
+                                    <span class="recent-job-title">{{ job.title }}</span>
+                                    <span class="recent-job-meta">
+                                        {{ job.location|default:"Remote" }} • {{ job.created_at|timesince }} ago
+                                    </span>
+                                </div>
+                            {% endfor %}
+                            {% if company.job_count > 3 %}
+                                <div class="recent-job-item">
+                                    <span class="recent-job-more">
+                                        +{{ company.job_count|add:"-3" }} more job{{ company.job_count|add:"-3"|pluralize }}
+                                    </span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if companies.has_other_pages %}
+        <div class="pagination-container">
+            <div class="pagination">
+                {% if companies.has_previous %}
+                    <a href="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#companies-results"
+                       class="pagination-link">
+                        <i class="fas fa-angle-double-left"></i> First
+                    </a>
+                    <a href="?page={{ companies.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page={{ companies.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#companies-results"
+                       class="pagination-link">
+                        <i class="fas fa-angle-left"></i> Previous
+                    </a>
+                {% endif %}
+
+                <span class="pagination-info">
+                    Page {{ companies.number }} of {{ companies.paginator.num_pages }}
+                </span>
+
+                {% if companies.has_next %}
+                    <a href="?page={{ companies.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page={{ companies.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#companies-results"
+                       class="pagination-link">
+                        Next <i class="fas fa-angle-right"></i>
+                    </a>
+                    <a href="?page={{ companies.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page={{ companies.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#companies-results"
+                       class="pagination-link">
+                        Last <i class="fas fa-angle-double-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+{% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="fas fa-building"></i>
+        <h3>No companies found</h3>
+        <p>Try adjusting your search criteria or start scraping to discover new companies.</p>
+        <div class="empty-actions">
+            <a href="{% url 'jobs:scraper_control' %}" class="btn btn-primary">
+                <i class="fas fa-robot"></i> Start Scraping
+            </a>
+            <a href="{% url 'jobs:companies_list' %}" class="btn btn-secondary">
+                <i class="fas fa-list"></i> View All Companies
+            </a>
+        </div>
+    </div>
+{% endif %}
+

@@ -1,0 +1,22 @@
+<!-- Dashboard Stats Partial - HTMX Update -->
+<div class="stat-card">
+    <div class="stat-value">{{ stats.total_jobs|default:"0" }}</div>
+    <div class="stat-label">
+        Total Jobs
+        <span class="auto-refresh-indicator" data-refresh-indicator="stats">
+            <i class="fas fa-sync-alt"></i>
+        </span>
+    </div>
+</div>
+<div class="stat-card">
+    <div class="stat-value">{{ stats.total_companies|default:"0" }}</div>
+    <div class="stat-label">Companies</div>
+</div>
+<div class="stat-card">
+    <div class="stat-value">{{ stats.jobs_today|default:"0" }}</div>
+    <div class="stat-label">Jobs Today</div>
+</div>
+<div class="stat-card">
+    <div class="stat-value">{{ stats.companies_with_websites|default:"0" }}</div>
+    <div class="stat-label">Companies with Websites</div>
+</div>

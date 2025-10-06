@@ -1,0 +1,209 @@
+/* Companies-specific styles */
+
+/* Company Containers */
+.companies-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Company Results Header */
+.companies-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+/* Company Grid */
+.companies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+/* Company Cards */
+.company-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+}
+
+.company-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.company-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.company-name {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    flex: 1;
+}
+
+.company-job-count {
+    flex-shrink: 0;
+}
+
+.company-description {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.company-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.company-industry,
+.company-size,
+.company-added {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.company-contact {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.company-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+}
+
+.company-contact-item:hover {
+    color: var(--primary-hover);
+}
+
+.company-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Recent Jobs Section */
+.company-recent-jobs {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+}
+
+.recent-jobs-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+}
+
+.recent-jobs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.recent-job-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    gap: 1rem;
+}
+
+.recent-job-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.recent-job-meta {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.recent-job-more {
+    color: var(--primary-color);
+    font-style: italic;
+}
+
+/* Results Info */
+.results-info .results-count {
+    margin-bottom: 0.5rem;
+}
+
+/* Empty State */
+.companies-empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-secondary);
+}
+
+.companies-empty-state i {
+    font-size: 3rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    display: block;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .companies-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .companies-results-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .company-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .company-actions {
+        flex-direction: column;
+    }
+    
+    .company-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .recent-job-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .company-contact {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}

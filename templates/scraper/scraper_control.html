@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Scraper Control - SimpExtrac{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components.css' %}">
+<link rel="stylesheet" href="{% static 'css/scraper.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="scraper-container">
+    <h1 class="page-title">
+        <i class="fas fa-robot"></i> Job Scraper Control
+    </h1>
+    
+    <div class="grid grid-2">
+        <!-- Scraper Configuration -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-cog"></i> Scraper Configuration
+                </h2>
+            </div>
+            <div class="card-content">
+                <form hx-post="{% url 'jobs:scraper_control' %}"
+                      hx-target="#scraper-results"
+                      hx-indicator="#scraper-loading"
+                      class="scraper-form">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="job_title">
+                            <i class="fas fa-briefcase"></i> Job Title
+                        </label>
+                        <input type="text" 
+                               id="job_title"
+                               name="job_title" 
+                               class="form-input" 
+                               placeholder="e.g., Python Developer, Data Scientist"
+                               value="Python Developer"
+                               required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="location">
+                            <i class="fas fa-map-marker-alt"></i> Location
+                        </label>
+                        <input type="text" 
+                               id="location"
+                               name="location" 
+                               class="form-input" 
+                               placeholder="e.g., New York, Remote, San Francisco"
+                               value="Remote">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="num_jobs">
+                            <i class="fas fa-hashtag"></i> Number of Jobs
+                        </label>
+                        <select id="num_jobs" name="num_jobs" class="form-select">
+                            <option value="5">5 jobs</option>
+                            <option value="10" selected>10 jobs</option>
+                            <option value="25">25 jobs</option>
+                            <option value="50">50 jobs</option>
+                            <option value="100">100 jobs</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-external-link-alt"></i> Sources
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sources" value="indeed" checked>
+                                <span class="checkmark"></span>
+                                Indeed
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sources" value="glassdoor" checked>
+                                <span class="checkmark"></span>
+                                Glassdoor
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" name="sources" value="linkedin">
+                                <span class="checkmark"></span>
+                                LinkedIn <span class="tag">Coming Soon</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-play"></i> Start Scraping
+                        </button>
+                        <button type="reset" class="btn btn-secondary">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="scraper-loading" class="scraper-loading hidden">
+                    <div class="spinner"></div>
+                    <p>Scraping in progress... This may take a few minutes.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scraper Statistics -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-chart-bar"></i> Scraping Statistics
+                </h2>
+            </div>
+            <div class="card-content">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.total_jobs }}</div>
+                        <div class="stat-label">Total Jobs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.indeed_jobs }}</div>
+                        <div class="stat-label">Indeed Jobs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.glassdoor_jobs }}</div>
+                        <div class="stat-label">Glassdoor Jobs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.total_companies }}</div>
+                        <div class="stat-label">Companies</div>
+                    </div>
+                </div>
+                
+                <div class="scraper-tips">
+                    <h3 class="tips-title">
+                        <i class="fas fa-lightbulb"></i> Scraping Tips
+                    </h3>
+                    <ul class="tips-list">
+                        <li>Use specific job titles for better results</li>
+                        <li>Try different location combinations</li>
+                        <li>Start with smaller batches (10-25 jobs) for testing</li>
+                        <li>Check the dashboard for real-time updates</li>
+                        <li>Scraping typically takes 1-3 minutes per 10 jobs</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Scraping Activity -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i class="fas fa-history"></i> Recent Scraping Activity
+            </h2>
+            <button class="btn btn-secondary" 
+                    hx-get="{% url 'jobs:scraper_control' %}"
+                    hx-target="#recent-activity">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        <div class="card-content">
+            <div id="recent-activity">
+                {% if recent_jobs %}
+                    <div class="recent-jobs-grid">
+                        {% for job in recent_jobs %}
+                            <div class="recent-job-card">
+                                <div class="job-info">
+                                    <h4 class="job-title">{{ job.title }}</h4>
+                                    <div class="job-company">{{ job.company.name }}</div>
+                                    <div class="job-meta">
+                                        <span>{{ job.location|default:"Remote" }}</span>
+                                        <span>{{ job.source|capfirst }}</span>
+                                        <span>{{ job.created_at|timesince }} ago</span>
+                                    </div>
+                                </div>
+                                <div class="job-actions">
+                                    <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-external-link-alt"></i> View
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-clock"></i>
+                        <p>No recent scraping activity. Start a scraping job to see results here.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scraper Results -->
+    <div id="scraper-results"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dashboard.js' %}"></script>
+<script>
+// Scraper-specific JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh recent activity every 30 seconds
+    setInterval(() => {
+        if (document.visibilityState === 'visible') {
+            const refreshBtn = document.querySelector('[hx-target="#recent-activity"]');
+            if (refreshBtn) {
+                htmx.trigger(refreshBtn, 'click');
+            }
+        }
+    }, 30000);
+    
+    // Form validation
+    const scraperForm = document.querySelector('.scraper-form');
+    if (scraperForm) {
+        scraperForm.addEventListener('submit', function(e) {
+            const jobTitle = document.getElementById('job_title').value.trim();
+            const checkedSources = document.querySelectorAll('input[name="sources"]:checked');
+            
+            if (!jobTitle) {
+                e.preventDefault();
+                window.showNotification('Please enter a job title', 'error');
+                return false;
+            }
+            
+            if (checkedSources.length === 0) {
+                e.preventDefault();
+                window.showNotification('Please select at least one source', 'error');
+                return false;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

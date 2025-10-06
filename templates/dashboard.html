@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - SimpExtrac{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components.css' %}">
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Auto-refresh Toggle -->
+    <div class="dashboard-controls">
+        <h1 class="page-title">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </h1>
+        <div class="auto-refresh-toggle-container">
+            <label class="auto-refresh-toggle">
+                <input type="checkbox" id="auto-refresh-toggle" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Auto-refresh</span>
+            </label>
+            <span class="refresh-status" id="refresh-status">
+                <i class="fas fa-sync-alt"></i> Active
+            </span>
+            <button class="btn btn-secondary" id="manual-refresh-btn" onclick="window.SimpExtrac.Dashboard.manualRefreshAll()">
+                <i class="fas fa-sync-alt"></i> Refresh Now
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Section with Auto-refresh -->
+    <div class="stats-grid" 
+         hx-get="{% url 'jobs:dashboard_stats' %}" 
+         hx-trigger="load, every 30s"
+         data-auto-refresh="30000"
+         data-refresh-key="stats">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_jobs|default:"0" }}</div>
+            <div class="stat-label">
+                Total Jobs
+                <span class="auto-refresh-indicator" data-refresh-indicator="stats">
+                    <i class="fas fa-sync-alt"></i>
+                </span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_companies|default:"0" }}</div>
+            <div class="stat-label">Companies</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.jobs_today|default:"0" }}</div>
+            <div class="stat-label">Jobs Today</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.companies_with_websites|default:"0" }}</div>
+            <div class="stat-label">Companies with Websites</div>
+        </div>
+    </div>
+
+    <div class="grid grid-2">
+        <!-- Recent Jobs -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-briefcase"></i> Recent Jobs
+                </h2>
+                <div class="flex items-center gap-2">
+                    <span class="auto-refresh-indicator" data-refresh-indicator="jobs">
+                        <i class="fas fa-sync-alt"></i> Auto-refresh
+                    </span>
+                    <a href="{% url 'jobs:jobs_list' %}" class="btn btn-primary">View All</a>
+                </div>
+            </div>
+            <div class="card-content">
+                {% if recent_jobs %}
+                    <div class="job-list" 
+                         id="recent-jobs-list"
+                         data-refresh-key="jobs">
+                        {% for job in recent_jobs %}
+                            <div class="job-card-mini" 
+                                 hx-get="{% url 'jobs:job_detail' job.pk %}"
+                                 hx-target="#job-detail-modal .modal-content"
+                                 hx-trigger="click"
+                                 data-job-id="{{ job.pk }}">
+                                <div class="job-title-mini">{{ job.title }}</div>
+                                <div class="job-company-mini">{{ job.company.name }}</div>
+                                <div class="job-meta-mini">
+                                    <span><i class="fas fa-map-marker-alt"></i> {{ job.location|default:"Remote" }}</span>
+                                    <span><i class="fas fa-calendar"></i> {{ job.created_at|date:"M d" }}</span>
+                                    <span class="tag tag-primary">{{ job.source|capfirst }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-briefcase"></i>
+                        <p>No jobs yet. Start scraping to see recent jobs here.</p>
+                        <a href="{% url 'jobs:scraper_control' %}" class="btn btn-primary">
+                            <i class="fas fa-robot"></i> Start Scraping
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Search -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-search"></i> Quick Search
+                </h2>
+            </div>
+            <div class="card-content">
+                <form class="search-form" 
+                      action="{% url 'jobs:jobs_list' %}" 
+                      method="post"
+                      data-search-form="true">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <input type="text" 
+                               name="search" 
+                               class="form-input" 
+                               placeholder="Search jobs, companies, locations..."
+                               autocomplete="off"
+                               data-search-input="true">
+                        <div id="search-suggestions" class="search-suggestions hidden"></div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <select name="source" class="form-select">
+                                <option value="">All Sources</option>
+                                <option value="indeed">Indeed</option>
+                                <option value="glassdoor">Glassdoor</option>
+                                <option value="linkedin">LinkedIn</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" name="location" class="form-input" placeholder="Location">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Search Jobs
+                    </button>
+                </form>
+                
+                <div id="search-results" class="search-results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <i class="fas fa-bolt"></i> Quick Actions
+            </h2>
+        </div>
+        <div class="card-content">
+            <div class="quick-actions">
+                <button class="btn btn-primary" 
+                        hx-post="{% url 'jobs:scraper_control' %}"
+                        hx-target="#scraper-results"
+                        hx-include="[data-scraper-param]"
+                        data-action="start-scrape">
+                    <i class="fas fa-robot"></i> Start Quick Scrape
+                </button>
+                
+                <a href="{% url 'jobs:jobs_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-list"></i> Browse All Jobs
+                </a>
+                
+                <a href="{% url 'jobs:companies_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-building"></i> View Companies
+                </a>
+                
+                <button class="btn btn-success" 
+                        data-manual-refresh=".stats-grid"
+                        onclick="window.SimpExtrac.Dashboard.manualRefresh('.stats-grid')">
+                    <i class="fas fa-sync-alt"></i> Refresh Stats
+                </button>
+            </div>
+            
+            <!-- Configuration data -->
+            <div class="hidden-form-data">
+                <input name="job_title" value="Python Developer" data-scraper-param>
+                <input name="location" value="Remote" data-scraper-param>
+                <input name="num_jobs" value="10" data-scraper-param>
+            </div>
+            
+            <div id="scraper-results" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Job Detail Modal -->
+<div id="job-detail-modal" class="modal hidden" data-modal="job-detail">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+        <!-- Job detail content will be loaded here via HTMX -->
+        <div class="text-center modal-loading">
+            <div class="spinner"></div>
+            <p>Loading job details...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

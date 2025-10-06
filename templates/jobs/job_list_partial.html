@@ -1,0 +1,157 @@
+<!-- Job Results Section - HTMX Partial -->
+<div class="jobs-results-header">
+    <div class="results-info">
+        <h2 class="results-count">
+            {% if jobs %}
+                {{ jobs.paginator.count }} job{{ jobs.paginator.count|pluralize }} found
+            {% else %}
+                No jobs found
+            {% endif %}
+        </h2>
+        {% if request.GET.search or request.GET.source or request.GET.location or request.GET.company %}
+            <div class="active-filters">
+                <span class="filter-label">Active filters:</span>
+                {% if request.GET.search %}
+                    <span class="tag">Search: "{{ request.GET.search }}"</span>
+                {% endif %}
+                {% if request.GET.source %}
+                    <span class="tag">Source: {{ request.GET.source|capfirst }}</span>
+                {% endif %}
+                {% if request.GET.location %}
+                    <span class="tag">Location: {{ request.GET.location }}</span>
+                {% endif %}
+                {% if request.GET.company %}
+                    <span class="tag">Company: {{ request.GET.company }}</span>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="results-actions">
+        <button class="btn btn-success" 
+                hx-get="{% url 'jobs:jobs_list' %}?{{ request.GET.urlencode }}"
+                hx-target="#jobs-results">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+</div>
+
+{% if jobs %}
+    <!-- Job Cards -->
+    <div class="jobs-grid">
+        {% for job in jobs %}
+            <div class="job-card" 
+                 hx-get="{% url 'jobs:job_detail' job.pk %}"
+                 hx-target="#job-detail-modal .modal-content"
+                 hx-trigger="click"
+                 class="cursor-pointer"
+                 data-job-id="{{ job.pk }}">
+                
+                <div class="job-header">
+                    <h3 class="job-title">{{ job.title }}</h3>
+                    <div class="job-company">
+                        <i class="fas fa-building"></i>
+                        {{ job.company.name }}
+                    </div>
+                </div>
+                
+                <div class="job-meta">
+                    <span class="job-location">
+                        <i class="fas fa-map-marker-alt"></i>
+                        {{ job.location|default:"Remote" }}
+                    </span>
+                    <span class="job-date">
+                        <i class="fas fa-calendar"></i>
+                        {{ job.created_at|timesince }} ago
+                    </span>
+                    <span class="job-source">
+                        <i class="fas fa-external-link-alt"></i>
+                        {{ job.source|capfirst }}
+                    </span>
+                    {% if job.salary %}
+                        <span class="job-salary">
+                            <i class="fas fa-dollar-sign"></i>
+                            {{ job.salary }}
+                        </span>
+                    {% endif %}
+                </div>
+                
+                {% if job.description %}
+                    <div class="job-description">
+                        {{ job.description|truncatewords:30 }}
+                    </div>
+                {% endif %}
+                
+                <div class="job-actions">
+                    <button class="btn btn-primary" 
+                            onclick="event.stopPropagation(); window.open('{{ job.url }}', '_blank')">
+                        <i class="fas fa-external-link-alt"></i> View Original
+                    </button>
+                    {% if job.company.company_website %}
+                        <button class="btn btn-secondary"
+                                onclick="event.stopPropagation(); window.open('{{ job.company.company_website }}', '_blank')">
+                            <i class="fas fa-globe"></i> Company Site
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if jobs.has_other_pages %}
+        <div class="pagination-container">
+            <div class="pagination">
+                {% if jobs.has_previous %}
+                    <a href="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#jobs-results"
+                       class="pagination-link">
+                        <i class="fas fa-angle-double-left"></i> First
+                    </a>
+                    <a href="?page={{ jobs.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page={{ jobs.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#jobs-results"
+                       class="pagination-link">
+                        <i class="fas fa-angle-left"></i> Previous
+                    </a>
+                {% endif %}
+
+                <span class="pagination-info">
+                    Page {{ jobs.number }} of {{ jobs.paginator.num_pages }}
+                </span>
+
+                {% if jobs.has_next %}
+                    <a href="?page={{ jobs.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page={{ jobs.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#jobs-results"
+                       class="pagination-link">
+                        Next <i class="fas fa-angle-right"></i>
+                    </a>
+                    <a href="?page={{ jobs.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-get="?page={{ jobs.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       hx-target="#jobs-results"
+                       class="pagination-link">
+                        Last <i class="fas fa-angle-double-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+{% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <h3>No jobs found</h3>
+        <p>Try adjusting your search criteria or check back later for new opportunities.</p>
+        <div class="empty-actions">
+            <a href="{% url 'jobs:scraper_control' %}" class="btn btn-primary">
+                <i class="fas fa-robot"></i> Start Scraping
+            </a>
+            <a href="{% url 'jobs:jobs_list' %}" class="btn btn-secondary">
+                <i class="fas fa-list"></i> View All Jobs
+            </a>
+        </div>
+    </div>
+{% endif %}

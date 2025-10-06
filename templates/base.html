@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SimpExtrac - Job Scraper Dashboard{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Alpine.js for light interactivity -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1><i class="fas fa-search"></i> SimpExtrac</h1>
+                <span class="tech-badge">Django + HTMX</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{% url 'jobs:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a></li>
+                <li><a href="{% url 'jobs:jobs_list' %}" class="nav-link {% if request.resolver_match.url_name == 'jobs_list' %}active{% endif %}">
+                    <i class="fas fa-briefcase"></i> Jobs
+                </a></li>
+                <li><a href="{% url 'jobs:companies_list' %}" class="nav-link {% if request.resolver_match.url_name == 'companies_list' %}active{% endif %}">
+                    <i class="fas fa-building"></i> Companies
+                </a></li>
+                <li><a href="{% url 'jobs:scraper_control' %}" class="nav-link {% if request.resolver_match.url_name == 'scraper_control' %}active{% endif %}">
+                    <i class="fas fa-robot"></i> Scraper
+                </a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Global loading indicator for HTMX -->
+    <div id="loading-indicator" class="loading-indicator hidden">
+        <div class="spinner"></div>
+        <span>Loading...</span>
+    </div>
+
+    <main class="main-content">
+        {% if messages %}
+            <div id="messages" class="messages-container">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" x-data="{ show: true }" x-show="show" x-transition>
+                        <span>{{ message }}</span>
+                        <button @click="show = false" class="alert-close">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; 2025 SimpExtrac. Built with Django + HTMX for modern reactive UIs.</p>
+            <div class="footer-links">
+                <a href="/api/" target="_blank"><i class="fas fa-code"></i> API</a>
+                <a href="/admin/" target="_blank"><i class="fas fa-cog"></i> Admin</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+    
+    <!-- HTMX Global Events -->
+    <script>
+        // Auto-dismiss messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                const messages = document.querySelectorAll('.alert');
+                messages.forEach(msg => {
+                    if (msg.style.display !== 'none') {
+                        msg.style.opacity = '0';
+                        setTimeout(() => msg.remove(), 300);
+                    }
+                });
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

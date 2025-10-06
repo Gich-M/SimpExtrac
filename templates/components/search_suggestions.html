@@ -1,0 +1,32 @@
+<!-- Search Suggestions Component - HTMX Partial -->
+{% if job_suggestions or company_suggestions %}
+    <div class="search-suggestions-content">
+        {% if job_suggestions %}
+            <div class="suggestion-group">
+                <div class="suggestion-header">
+                    <i class="fas fa-briefcase"></i> Job Titles
+                </div>
+                {% for suggestion in job_suggestions %}
+                    <div class="search-suggestion-item" 
+                         onclick="document.querySelector('input[name=search]').value='{{ suggestion }}'; this.parentElement.parentElement.parentElement.style.display='none';">
+                        {{ suggestion }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% if company_suggestions %}
+            <div class="suggestion-group">
+                <div class="suggestion-header">
+                    <i class="fas fa-building"></i> Companies
+                </div>
+                {% for suggestion in company_suggestions %}
+                    <div class="search-suggestion-item"
+                         onclick="document.querySelector('input[name=search]').value='{{ suggestion }}'; this.parentElement.parentElement.parentElement.style.display='none';">
+                        {{ suggestion }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endif %}

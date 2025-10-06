@@ -1,0 +1,359 @@
+/* Scraper-specific styles */
+
+/* Scraper Container */
+.scraper-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Scraper Form */
+.scraper-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--primary-color);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* Scraper Loading */
+.scraper-loading {
+    text-align: center;
+    padding: 2rem;
+    background: var(--bg-color);
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+}
+
+.scraper-loading .spinner {
+    margin: 0 auto 1rem;
+}
+
+.scraper-loading-text {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.scraper-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg-color);
+    border-radius: 0.5rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Scraper Tips */
+.scraper-tips {
+    background: var(--bg-color);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+}
+
+.tips-title {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.tips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tips-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.tips-list li:before {
+    content: "💡";
+    position: absolute;
+    left: 0;
+}
+
+.tips-list li:last-child {
+    border-bottom: none;
+}
+
+/* Recent Jobs Grid */
+.recent-jobs-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.recent-job-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--bg-color);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.job-info {
+    flex: 1;
+}
+
+.job-info .job-title {
+    margin: 0 0 0.25rem 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.job-info .job-company {
+    color: var(--primary-color);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.job-info .job-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.job-actions {
+    flex-shrink: 0;
+    margin-left: 1rem;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Scraper Status */
+.scraper-status-card {
+    background: var(--card-bg);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+    margin: 1rem 0;
+    overflow: hidden;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+}
+
+.status-running {
+    border-left: 4px solid var(--warning-color);
+    background: #fffbeb;
+}
+
+.status-completed {
+    border-left: 4px solid var(--success-color);
+    background: #f0fdf4;
+}
+
+.status-error {
+    border-left: 4px solid var(--danger-color);
+    background: #fef2f2;
+}
+
+.status-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.status-running .status-icon,
+.status-running .spinner {
+    color: var(--warning-color);
+}
+
+.status-completed .status-icon {
+    color: var(--success-color);
+}
+
+.status-error .status-icon {
+    color: var(--danger-color);
+}
+
+.status-content {
+    flex: 1;
+}
+
+.status-title {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.status-message {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.status-progress {
+    margin: 1rem 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 0.5rem;
+    background: var(--border-color);
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--warning-color);
+    border-radius: 0.25rem;
+}
+
+.progress-fill-animated {
+    width: 0%;
+    animation: indeterminate 2s infinite;
+}
+
+@keyframes indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.status-details {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.status-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Hidden elements */
+.scraper-hidden {
+    display: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .scraper-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .recent-job-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .job-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .job-actions .btn {
+        width: 100%;
+    }
+    
+    .job-info .job-meta {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .status-indicator {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .status-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .status-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .status-details {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}

@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Companies - SimpExtrac{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components.css' %}">
+<link rel="stylesheet" href="{% static 'css/companies.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="companies-container">
+    <!-- Search and Filters -->
+    <div class="search-filters">
+        <h1 class="page-title">
+            <i class="fas fa-building"></i> Companies
+        </h1>
+        
+        <form class="form" 
+              hx-post="{% url 'jobs:companies_list' %}" 
+              hx-target="#companies-results"
+              hx-trigger="submit">
+            {% csrf_token %}
+            
+            <div class="filter-group">
+                <div class="form-group">
+                    <label class="form-label">Search Companies</label>
+                    <input type="text" 
+                           name="search" 
+                           class="form-input" 
+                           placeholder="Search by name, website, or email..."
+                           value="{{ request.GET.search|default:'' }}"
+                           hx-get="{% url 'jobs:companies_list' %}"
+                           hx-target="#companies-results"
+                           hx-trigger="keyup changed delay:300ms"
+                           autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <a href="{% url 'jobs:companies_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Company Results -->
+    <div id="companies-results">
+        {% include 'companies/company_list_partial.html' %}
+    </div>
+</div>
+
+<!-- Company Detail Modal -->
+<div id="company-detail-modal" class="modal hidden" data-modal="company-detail">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+        <div class="text-center modal-loading">
+            <div class="spinner"></div>
+            <p>Loading company details...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

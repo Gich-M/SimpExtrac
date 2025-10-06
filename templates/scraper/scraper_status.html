@@ -1,0 +1,71 @@
+<!-- Scraper Status Partial - HTMX Update -->
+<div class="scraper-status-card">
+    {% if status == 'running' %}
+        <div class="status-indicator status-running">
+            <div class="spinner"></div>
+            <div class="status-content">
+                <h3 class="status-title">
+                    <i class="fas fa-robot"></i> Scraping in Progress
+                </h3>
+                <p class="status-message">{{ message|default:"Scraping jobs... This may take a few minutes." }}</p>
+                <div class="status-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-fill-animated"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% elif status == 'completed' %}
+        <div class="status-indicator status-completed">
+            <div class="status-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="status-content">
+                <h3 class="status-title">Scraping Completed!</h3>
+                <p class="status-message">{{ message|default:"Successfully scraped new jobs." }}</p>
+                {% if jobs_found %}
+                    <div class="status-details">
+                        <span class="detail-item">
+                            <i class="fas fa-briefcase"></i>
+                            {{ jobs_found }} new job{{ jobs_found|pluralize }}
+                        </span>
+                        {% if companies_found %}
+                            <span class="detail-item">
+                                <i class="fas fa-building"></i>
+                                {{ companies_found }} new compan{{ companies_found|pluralize:"y,ies" }}
+                            </span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                <div class="status-actions">
+                    <a href="{% url 'jobs:jobs_list' %}" class="btn btn-primary">
+                        <i class="fas fa-list"></i> View Jobs
+                    </a>
+                    <a href="{% url 'jobs:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% elif status == 'error' %}
+        <div class="status-indicator status-error">
+            <div class="status-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="status-content">
+                <h3 class="status-title">Scraping Failed</h3>
+                <p class="status-message">{{ message|default:"An error occurred during scraping. Please try again." }}</p>
+                <div class="status-actions">
+                    <button class="btn btn-primary" 
+                            onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                    <a href="{% url 'jobs:scraper_control' %}" class="btn btn-secondary">
+                        <i class="fas fa-cog"></i> Adjust Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
