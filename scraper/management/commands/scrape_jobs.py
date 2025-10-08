@@ -1,93 +1,54 @@
 """
-Django management command to run scraper
-Usage: python manage.py scrape_jobs --title "Python Developer" --location "Remote" --source indeed --max-jobs 25
+Django management command for job scraping
 """
 from django.core.management.base import BaseCommand, CommandError
-from django.conf import settings
-from scraper.tasks import run_scraper_task
-import logging
+from scraper.tasks import run_scraper_url_task
 
 
 class Command(BaseCommand):
-    help = 'Run job scraper with specified parameters'
-    
+    help = 'Scrape jobs from filtered URL'
+
     def add_arguments(self, parser):
+        parser.add_argument('url', type=str, help='Filtered URL from Indeed, Glassdoor, or LinkedIn')
         parser.add_argument(
-            '--title',
-            type=str,
-            required=True,
-            help='Job title to search for'
-        )
-        parser.add_argument(
-            '--location',
-            type=str,
-            default='',
-            help='Location to search in (optional)'
-        )
-        parser.add_argument(
-            '--source',
-            type=str,
-            choices=['indeed', 'glassdoor'],
-            default='indeed',
-            help='Source to scrape from'
-        )
-        parser.add_argument(
-            '--max-jobs',
+            '--num-jobs',
             type=int,
             default=25,
-            help='Maximum number of jobs to scrape'
+            help='Number of jobs to scrape (default: 25)',
         )
-        parser.add_argument(
-            '--verbose',
-            action='store_true',
-            help='Enable verbose logging'
-        )
-    
+
     def handle(self, *args, **options):
-        # Set up logging
-        if options['verbose']:
-            logging.basicConfig(level=logging.INFO)
+        url = options['url']
+        num_jobs = options['num_jobs']
         
-        job_title = options['title']
-        location = options['location']
-        source = options['source']
-        max_jobs = options['max_jobs']
-        
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Starting scraper: '{job_title}' in '{location}' from {source} (max: {max_jobs} jobs)"
-            )
-        )
+        self.stdout.write("=" * 60)
+        self.stdout.write("Job Scraper - Django Management Command")
+        self.stdout.write("=" * 60)
+        self.stdout.write(f"URL: {url}")
+        self.stdout.write(f"Jobs to Scrape: {num_jobs}")
+        self.stdout.write("-" * 60)
         
         try:
-            # Run the scraper
-            result = run_scraper_task(
-                job_title=job_title,
-                location=location,
-                source=source,
-                max_jobs=max_jobs
-            )
+            results = run_scraper_url_task(url, num_jobs)
             
-            # Display results
+            self.stdout.write("\n" + "=" * 60)
+            self.stdout.write("SCRAPING RESULTS")
+            self.stdout.write("=" * 60)
+            self.stdout.write(f"Source: {results['source']}")
+            self.stdout.write(f"Jobs Found: {results.get('total_scraped', 0)}")
+            self.stdout.write(f"Jobs Saved: {results['jobs_saved']}")
+            self.stdout.write(f"Companies: {results['companies_created']}")
+            self.stdout.write(f"Scraping Time: {results.get('scraping_time', 0):.2f}s")
+            
+            if results.get('errors'):
+                self.stdout.write(f"Errors: {len(results['errors'])}")
+                for error in results['errors']:
+                    self.stdout.write(f"  - {error}")
+            
+            self.stdout.write("=" * 60)
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"Scraping completed successfully!\n"
-                    f"Jobs saved: {result['jobs_saved']}\n"
-                    f"Companies created: {result['companies_created']}\n"
-                    f"Duplicates skipped: {result.get('duplicates_skipped', 0)}\n"
-                    f"Total scraped: {result['total_scraped']}\n"
-                    f"Scraping time: {result.get('scraping_time', 0):.2f} seconds"
-                )
+                self.style.SUCCESS('Scraping completed successfully!')
             )
-            
-            if result['errors']:
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"Errors encountered: {len(result['errors'])}"
-                    )
-                )
-                for error in result['errors']:
-                    self.stdout.write(self.style.ERROR(f"  - {error}"))
             
         except Exception as e:
-            raise CommandError(f"Scraping failed: {str(e)}")
+            raise CommandError(f'Scraping failed: {e}')

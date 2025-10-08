@@ -37,3 +37,6 @@ Thumbs.db
 *.bak
 *.backup
 *.orig
+
+# Data files
+data/

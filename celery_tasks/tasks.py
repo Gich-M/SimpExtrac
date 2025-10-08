@@ -51,46 +51,36 @@ def scrape_jobs_task(self, search_criteria: Dict[str, Any], scheduled_job_id=Non
     try:
         logger.info(f"Starting scrape task {task_id} with criteria: {search_criteria}")
         
-        # Extract search parameters
-        job_title = search_criteria.get('job_title', '')
-        location = search_criteria.get('location', '')
-        sources = search_criteria.get('sources', ['indeed'])
-        max_jobs = search_criteria.get('max_jobs', 25)
+        # Check if this is URL-based or legacy parameter-based scraping
+        scrape_type = search_criteria.get('scrape_type', 'legacy')
         
-        # Update progress
-        progress.update_progress(
-            step=f"Starting to scrape {len(sources)} sources for '{job_title}' in '{location}'",
-            percentage=5
-        )
-        
-        # Track results
-        total_jobs_found = 0
-        total_companies_found = 0
-        errors = []
-        source_results = {}
-        
-        # Process each source
-        for i, source in enumerate(sources):
+        if scrape_type == 'url_based':
+            # NEW: URL-based approach (Interview Requirement 6)
+            filtered_url = search_criteria.get('filtered_url', '')
+            max_jobs = search_criteria.get('max_jobs', 25)
+            source = search_criteria.get('source', 'indeed')
+            
+            progress.update_progress(
+                step=f"Starting URL-based scraping from {source.title()}",
+                percentage=10
+            )
+            
             try:
                 progress.update_progress(
-                    step=f"Scraping {source.title()}...",
+                    step=f"Processing {filtered_url}...",
                     current_source=source,
-                    completed_sources=i,
-                    percentage=10 + (i * 70 // len(sources))
+                    percentage=30
                 )
                 
-                logger.info(f"Scraping {source} for task {task_id}")
-                
-                # Run the scraper for this source
                 jobs_before = Job.objects.count()
                 companies_before = Company.objects.count()
                 
-                # Call the scraper task
-                scrape_results = run_scraper_task(
-                    job_title=job_title,
-                    location=location,
-                    source=source,
-                    max_jobs=max_jobs // len(sources)  # Distribute across sources
+                # Call the new URL-based scraper task
+                from scraper.tasks import run_scraper_url_task
+                scrape_results = run_scraper_url_task(
+                    filtered_url=filtered_url,
+                    max_jobs=max_jobs,
+                    source=source
                 )
                 
                 jobs_after = Job.objects.count()
@@ -99,44 +89,122 @@ def scrape_jobs_task(self, search_criteria: Dict[str, Any], scheduled_job_id=Non
                 jobs_found = jobs_after - jobs_before
                 companies_found = companies_after - companies_before
                 
-                total_jobs_found += jobs_found
-                total_companies_found += companies_found
-                
-                source_results[source] = {
-                    'jobs_found': jobs_found,
-                    'companies_found': companies_found,
-                    'success': True
-                }
-                
-                # Update progress
                 progress.update_progress(
-                    jobs_scraped=total_jobs_found,
-                    companies_found=total_companies_found,
-                    completed_sources=i + 1
+                    step="URL-based scraping completed",
+                    jobs_scraped=jobs_found,
+                    companies_found=companies_found,
+                    percentage=90
                 )
                 
-                logger.info(f"Completed {source} scraping: {jobs_found} jobs, {companies_found} companies")
+                logger.info(f"URL-based scraping completed: {jobs_found} jobs, {companies_found} companies")
+                
+                # Final result for URL-based scraping
+                total_jobs_found = jobs_found
+                total_companies_found = companies_found
+                source_results = {
+                    source: {
+                        'jobs_found': jobs_found,
+                        'companies_found': companies_found,
+                        'success': True
+                    }
+                }
+                errors = []
                 
             except Exception as e:
-                error_msg = f"Error scraping {source}: {str(e)}"
+                error_msg = f"Error in URL-based scraping: {str(e)}"
                 logger.error(f"Task {task_id} - {error_msg}")
-                logger.error(traceback.format_exc())
+                errors = [{'source': source, 'error': error_msg}]
+                total_jobs_found = 0
+                total_companies_found = 0
+                source_results = {}
                 
-                errors.append({
-                    'source': source,
-                    'error': str(e),
-                    'timestamp': timezone.now().isoformat()
-                })
-                
-                source_results[source] = {
-                    'jobs_found': 0,
-                    'companies_found': 0,
-                    'success': False,
-                    'error': str(e)
-                }
-                
-                # Continue with other sources even if one fails
-                continue
+        else:
+            # LEGACY: Parameter-based approach (redirects internally to URL-based)
+            job_title = search_criteria.get('job_title', '')
+            location = search_criteria.get('location', '')
+            sources = search_criteria.get('sources', ['indeed'])
+            max_jobs = search_criteria.get('max_jobs', 25)
+            
+            # Update progress
+            progress.update_progress(
+                step=f"Starting legacy scraping for '{job_title}' in '{location}'",
+                percentage=5
+            )
+            
+            # Track results
+            total_jobs_found = 0
+            total_companies_found = 0
+            errors = []
+            source_results = {}
+            
+            # Process each source
+            for i, source in enumerate(sources):
+                try:
+                    progress.update_progress(
+                        step=f"Scraping {source.title()}...",
+                        current_source=source,
+                        completed_sources=i,
+                        percentage=10 + (i * 70 // len(sources))
+                    )
+                    
+                    logger.info(f"Scraping {source} for task {task_id}")
+                    
+                    # Run the scraper for this source
+                    jobs_before = Job.objects.count()
+                    companies_before = Company.objects.count()
+                    
+                    # Call the legacy scraper task (redirects internally to URL-based)
+                    scrape_results = run_scraper_task(
+                        job_title=job_title,
+                        location=location,
+                        source=source,
+                        max_jobs=max_jobs // len(sources)  # Distribute across sources
+                    )
+                    
+                    jobs_after = Job.objects.count()
+                    companies_after = Company.objects.count()
+                    
+                    jobs_found = jobs_after - jobs_before
+                    companies_found = companies_after - companies_before
+                    
+                    total_jobs_found += jobs_found
+                    total_companies_found += companies_found
+                    
+                    source_results[source] = {
+                        'jobs_found': jobs_found,
+                        'companies_found': companies_found,
+                        'success': True
+                    }
+                    
+                    # Update progress
+                    progress.update_progress(
+                        jobs_scraped=total_jobs_found,
+                        companies_found=total_companies_found,
+                        completed_sources=i + 1
+                    )
+                    
+                    logger.info(f"Completed {source} scraping: {jobs_found} jobs, {companies_found} companies")
+                    
+                except Exception as e:
+                    error_msg = f"Error scraping {source}: {str(e)}"
+                    logger.error(f"Task {task_id} - {error_msg}")
+                    logger.error(traceback.format_exc())
+                    
+                    errors.append({
+                        'source': source,
+                        'error': str(e),
+                        'timestamp': timezone.now().isoformat()
+                    })
+                    
+                    source_results[source] = {
+                        'jobs_found': 0,
+                        'companies_found': 0,
+                        'success': False,
+                        'error': str(e)
+                    }
+                    
+                    # Continue with other sources even if one fails
+                    continue
         
         # Final progress update
         progress.update_progress(

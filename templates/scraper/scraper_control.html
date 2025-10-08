@@ -18,8 +18,11 @@
     <div class="card">
         <div class="card-header">
             <h2 class="card-title">
-                <i class="fas fa-cog"></i> Manual Scraping
+                <i class="fas fa-cog"></i> Job Scraper (Interview Demo)
             </h2>
+            <p class="card-subtitle">
+                <strong>Requirement 6:</strong> User enters filtered URL + specifies number of jobs to scrape
+            </p>
         </div>
         <div class="card-content">
             <form hx-post="{% url 'jobs:scraper_control' %}"
@@ -28,60 +31,63 @@
                   class="scraper-form">
                 {% csrf_token %}
                 
+                <!-- URL-based Input (Interview Requirement) -->
+                <div class="form-group">
+                    <label class="form-label" for="filtered_url">
+                        <i class="fas fa-link"></i> Filtered Job Search URL
+                    </label>
+                    <input type="url" 
+                           id="filtered_url"
+                           name="filtered_url" 
+                           class="form-input" 
+                           placeholder="https://www.indeed.com/jobs?q=python&l=remote&fromage=1"
+                           required>
+                    <small class="form-help">
+                        Paste a pre-filtered URL from Indeed or Glassdoor (with your desired filters already applied)
+                    </small>
+                </div>
+                
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label" for="job_title">Job Title</label>
-                        <input type="text" 
-                               id="job_title"
-                               name="job_title" 
-                               class="form-input" 
-                               placeholder="e.g., Python Developer"
-                               value="Python Developer"
-                               required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="location">Location</label>
-                        <input type="text" 
-                               id="location"
-                               name="location" 
-                               class="form-input" 
-                               placeholder="e.g., Remote"
-                               value="Remote">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="num_jobs">Jobs</label>
-                        <select id="num_jobs" name="num_jobs" class="form-select">
-                            <option value="5">5</option>
-                            <option value="10" selected>10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
+                        <label class="form-label" for="max_jobs">
+                            <i class="fas fa-hashtag"></i> Number of Jobs
+                        </label>
+                        <select id="max_jobs" name="max_jobs" class="form-select">
+                            <option value="5">5 jobs</option>
+                            <option value="10" selected>10 jobs</option>
+                            <option value="25">25 jobs</option>
+                            <option value="50">50 jobs</option>
                         </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Source Detection</label>
+                        <p class="form-text">
+                            <i class="fas fa-magic"></i> Automatically detected from URL domain
+                        </p>
                     </div>
                 </div>
                 
+                <!-- Example URLs Helper -->
                 <div class="form-group">
-                    <label class="form-label">Sources</label>
-                    <div class="checkbox-group-inline">
-                        <label class="checkbox-item-inline">
-                            <input type="checkbox" name="sources" value="indeed" checked>
-                            Indeed
-                        </label>
-                        <label class="checkbox-item-inline">
-                            <input type="checkbox" name="sources" value="glassdoor" checked>
-                            Glassdoor
-                        </label>
-                        <label class="checkbox-item-inline">
-                            <input type="checkbox" name="sources" value="linkedin">
-                            LinkedIn
-                        </label>
+                    <label class="form-label">
+                        <i class="fas fa-lightbulb"></i> Example URLs:
+                    </label>
+                    <div class="url-examples">
+                        <button type="button" class="btn btn-sm btn-outline" 
+                                onclick="document.getElementById('filtered_url').value='https://www.indeed.com/jobs?q=python+developer&l=remote&fromage=1'">
+                            Indeed Remote Python
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline"
+                                onclick="document.getElementById('filtered_url').value='https://www.glassdoor.com/Job/jobs.htm?sc.keyword=python&locKeyword=remote'">
+                            Glassdoor Remote Python  
+                        </button>
                     </div>
                 </div>
                 
                 <div class="form-actions-minimal">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-play"></i> Start Manual Scan
+                        <i class="fas fa-play"></i> Start URL-Based Scraping
                     </button>
                 </div>
             </form>

@@ -203,48 +203,71 @@ class CompanyDetailView(DetailView):
 
 @require_http_methods(["GET", "POST"])
 def scraper_control(request):
-    """HTMX-powered scraper control interface with modern loading indicators"""
+    """
+    HTMX-powered scraper control with URL-based input (Interview Requirement 6).
+    
+    User enters filtered URL + specifies number of jobs to scrape.
+    """
     
     if request.method == 'POST':
-        job_title = request.POST.get('job_title', 'Python Developer')
-        location = request.POST.get('location', 'Remote')
-        num_jobs = int(request.POST.get('num_jobs', 10))
-        sources = request.POST.getlist('sources', ['indeed'])
+        # NEW: URL-based approach (requirement 6)
+        filtered_url = request.POST.get('filtered_url', '')
+        max_jobs = int(request.POST.get('max_jobs', 10))
+        
+        # Auto-detect source from URL domain
+        source = 'indeed'  # default
+        if 'glassdoor.com' in filtered_url.lower():
+            source = 'glassdoor'
+        elif 'linkedin.com' in filtered_url.lower():
+            source = 'linkedin'
+        elif 'indeed.com' in filtered_url.lower():
+            source = 'indeed'
         
         if request.htmx:
-            # For HTMX requests, show immediate feedback with modern UI
+            # For HTMX requests, run scraping task
             try:
-                # For manual scans, you can either:
-                # Option 1: Run immediately (blocking) for small jobs
-                if num_jobs <= 25:
-                    from scraper.tasks import run_scraper_task
-                    result = run_scraper_task(
-                        job_title=job_title, 
-                        location=location, 
-                        source=sources[0] if sources else 'indeed',  # Use first selected source
-                        max_jobs=num_jobs
+                # Use URL-based scraping (requirement 6)
+                if max_jobs <= 25:
+                    from celery_tasks.tasks import scrape_jobs_task
+                    
+                    # Prepare URL-based search criteria
+                    search_criteria = {
+                        'filtered_url': filtered_url,
+                        'max_jobs': max_jobs,
+                        'source': source,
+                        'scrape_type': 'url_based'  # New flag for URL-based scraping
+                    }
+                    
+                    task = scrape_jobs_task.delay(
+                        search_criteria=search_criteria,
+                        user_id=request.user.id if request.user.is_authenticated else None
                     )
                     
-                    # Return modern success result
+                    # Return task status for URL-based scraping
                     return render(request, 'scraper/scraper_results.html', {
-                        'status': 'success',
-                        'results': result,
+                        'status': 'running',
+                        'task_id': task.id,
                         'search_params': {
-                            'job_title': job_title,
-                            'location': location,
-                            'num_jobs': num_jobs,
-                            'sources': sources
+                            'filtered_url': filtered_url,
+                            'max_jobs': max_jobs,
+                            'source': source
                         }
                     })
                 else:
-                    # Option 2: Use Celery for larger jobs
+                    # For larger jobs, always use background processing
                     try:
                         from celery_tasks.tasks import scrape_jobs_task
+                        
+                        search_criteria = {
+                            'filtered_url': filtered_url,
+                            'max_jobs': max_jobs,
+                            'source': source,
+                            'scrape_type': 'url_based'
+                        }
+                        
                         task = scrape_jobs_task.delay(
-                            job_title=job_title,
-                            location=location,
-                            sources=sources,
-                            max_jobs=num_jobs
+                            search_criteria=search_criteria,
+                            user_id=request.user.id if request.user.is_authenticated else None
                         )
                         
                         # Return background task status
@@ -252,10 +275,9 @@ def scraper_control(request):
                             'status': 'running',
                             'task_id': task.id,
                             'search_params': {
-                                'job_title': job_title,
-                                'location': location,
-                                'num_jobs': num_jobs,
-                                'sources': sources
+                                'filtered_url': filtered_url,
+                                'max_jobs': max_jobs,
+                                'source': source
                             }
                         })
                     except Exception as e:
@@ -264,10 +286,9 @@ def scraper_control(request):
                             'status': 'error',
                             'error_message': f'Failed to queue background job: {str(e)}',
                             'search_params': {
-                                'job_title': job_title,
-                                'location': location,
-                                'num_jobs': num_jobs,
-                                'sources': sources
+                                'filtered_url': filtered_url,
+                                'max_jobs': max_jobs,
+                                'source': source
                             }
                         })
                         
@@ -277,10 +298,9 @@ def scraper_control(request):
                     'status': 'error',
                     'error_message': str(e),
                     'search_params': {
-                        'job_title': job_title,
-                        'location': location,
-                        'num_jobs': num_jobs,
-                        'sources': sources
+                        'filtered_url': filtered_url,
+                        'max_jobs': max_jobs,
+                        'source': source
                     }
                 })
         else:

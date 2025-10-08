@@ -2,12 +2,8 @@ import json
 import csv
 import os
 from datetime import datetime
-from difflib import SequenceMatcher
-from collections import Counter
 import logging
 from typing import List, Dict, Optional
-
-# Django setup
 import os
 import sys
 import django
@@ -26,6 +22,11 @@ from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 
 class JobDataManager:
+    """
+    Job data manager
+    - Save jobs to Django models
+    - Handle duplicates and merge from multiple sources
+    """
     def __init__(self, storage_path="data/scraped_jobs.json"):
         self.storage_path = storage_path
         self.storage_dir = os.path.dirname(storage_path)
@@ -33,13 +34,9 @@ class JobDataManager:
         if self.storage_dir and not os.path.exists(self.storage_dir):
             os.makedirs(self.storage_dir)
 
-        self.title_similarity_threshold = 0.8
-        self.company_similarity_threshold = 0.9
-        self.location_similarity_threshold = 0.7
-
     def save_jobs(self, jobs_list: List[Dict], append_mode=True):
         try:
-            # Save to JSON (existing functionality)
+            # Save to JSON and CSV
             existing_jobs = []
             if append_mode and os.path.exists(self.storage_path):
                 existing_jobs = self.load_jobs()
@@ -70,43 +67,60 @@ class JobDataManager:
 
     def save_to_django_db(self, jobs_list: List[Dict]):
         """Save jobs to Django database"""
+        logging.info("DATABASE SAVE PROCESS STARTING")
+        logging.info(f"Jobs to save: {len(jobs_list)}")
+        
         companies_created = 0
         jobs_created = 0
         jobs_updated = 0
 
-        for job_data in jobs_list:
+        for i, job_data in enumerate(jobs_list, 1):
+            logging.info(f"\n--- SAVING JOB {i}/{len(jobs_list)} ---")
+            
             # Skip incomplete records
             if not job_data.get('title') or not job_data.get('company'):
+                logging.warning(f"Skipping incomplete job: title='{job_data.get('title')}', company='{job_data.get('company')}'")
                 continue
 
             try:
                 # Get or create company
                 company_name = job_data['company']
+                company_website = job_data.get('company_website')
+                company_email = job_data.get('company_email')
+                
+                logging.info(f"Processing company: {company_name}")
+                logging.info(f"  Website: {company_website}")
+                logging.info(f"  Email: {company_email}")
+                
                 company, created = Company.objects.get_or_create(
                     name=company_name,
                     defaults={
-                        'company_website': job_data.get('company_website'),
-                        'company_email': job_data.get('company_email'),
+                        'company_website': company_website,
+                        'company_email': company_email,
                     }
                 )
 
                 if created:
                     companies_created += 1
-                    logging.info(f"Created company: {company_name}")
+                    logging.info(f"Created new company: {company_name}")
                 else:
+                    logging.info(f"Found existing company: {company_name}")
                     # Update company info if we have new data
                     updated = False
-                    if job_data.get('company_website') and not company.company_website:
-                        company.company_website = job_data.get('company_website')
+                    if company_website and not company.company_website:
+                        logging.info(f"  Updating website: {company_website}")
+                        company.company_website = company_website
                         updated = True
-                    if job_data.get('company_email') and not company.company_email:
-                        company.company_email = job_data.get('company_email')
+                    if company_email and not company.company_email:
+                        logging.info(f"  Updating email: {company_email}")
+                        company.company_email = company_email
                         updated = True
                     if updated:
                         company.save()
+                        logging.info(f"Updated company info for: {company_name}")
 
-                # Parse scraped_at datetime - FIX TIMEZONE ISSUE
-                scraped_at = timezone.now()  # Use timezone-aware datetime
+                # Parse scraped_at datetime
+                scraped_at = timezone.now()
                 if job_data.get('scraped_at'):
                     try:
                         # Parse and make timezone-aware
@@ -119,29 +133,65 @@ class JobDataManager:
                         scraped_at = timezone.now()
                 
                 # Create or update job
-                job, created = Job.objects.update_or_create(
-                    title=job_data['title'],
-                    company=company,
-                    url=job_data.get('url', ''),
-                    defaults={
-                        'location': job_data.get('location', ''),
-                        'description': job_data.get('description', ''),
-                        'salary': job_data.get('salary', ''),
-                        'source': job_data.get('source', 'Unknown'),
-                        'scraped_at': scraped_at,
-                    }
-                )
+                job_title = job_data['title']
+                job_url = job_data.get('url', '')
+                job_location = job_data.get('location', '')
+                job_description = job_data.get('description', '')
+                
+                logging.info(f"Processing job: {job_title}")
+                logging.info(f"  URL: {job_url}")
+                
+                # Use title + company + location + description for duplicate detection
+                # This provides better accuracy as same title/company/location can have different roles
+                try:
+                    job, created = Job.objects.update_or_create(
+                        title=job_title,        
+                        company=company,
+                        location=job_location,
+                        description=job_description,
+                        defaults={
+                            'source': job_data.get('source', 'Unknown'),
+                            'url': job_url,  # Always update URL to latest
+                            'scraped_at': scraped_at,
+                        }
+                    )
+                except Job.MultipleObjectsReturned:
+                    # Handle case where multiple jobs exist with same criteria
+                    # Update the most recent one
+                    job = Job.objects.filter(
+                        title=job_title,
+                        company=company,
+                        location=job_location,
+                        description=job_description
+                    ).order_by('-scraped_at').first()
+                    
+                    if job:
+                        job.source = job_data.get('source', 'Unknown')
+                        job.url = job_url
+                        job.scraped_at = scraped_at
+                        job.save()
+                        created = False
+                        logging.info(f"Updated most recent duplicate job: {job_title}")
+                    else:
+                        logging.error(f"Failed to find job to update for: {job_title}")
+                        continue
                 
                 if created:
                     jobs_created += 1
+                    logging.info(f"Created new job: {job_title}")
                 else:
                     jobs_updated += 1
+                    logging.info(f"Updated existing job: {job_title}")
 
             except Exception as e:
                 logging.error(f'Error saving job to database: {job_data.get("title", "Unknown")} - {str(e)}')
+                logging.error(f"Exception type: {type(e).__name__}")
+                import traceback
+                logging.error(f"Traceback: {traceback.format_exc()}")
                 continue
 
-        logging.info(f'Database save completed: {companies_created} companies created, {jobs_created} jobs created, {jobs_updated} jobs updated')
+        logging.info(f'\nDATABASE SAVE COMPLETED')
+        logging.info(f'Summary: {companies_created} companies created, {jobs_created} jobs created, {jobs_updated} jobs updated')
 
     def load_jobs(self) -> List[Dict]:
         try:
@@ -198,21 +248,30 @@ class JobDataManager:
             writer.writeheader()
             writer.writerows(jobs_list)
 
-    def _find_duplicate(self, new_job: Dict, existing_jobs: Dict) -> Optional[int]:
-        new_url = new_job.get('url', '').strip()
+    def _find_duplicate(self, new_job: Dict, existing_jobs: List[Dict]) -> Optional[int]:
+        """
+        Find duplicate job using title + company + location + description
+        This matches the Django DB duplicate detection logic
+        """
+        new_title = new_job.get('title', '').strip()
+        new_company = new_job.get('company', '').strip()
+        new_location = new_job.get('location', '').strip()
+        new_description = new_job.get('description', '').strip()
 
         for i, existing_job in enumerate(existing_jobs):
-            existing_url = existing_job.get('url', '').strip()
+            existing_title = existing_job.get('title', '').strip()
+            existing_company = existing_job.get('company', '').strip()
+            existing_location = existing_job.get('location', '').strip()
+            existing_description = existing_job.get('description', '').strip()
 
-            if new_url and existing_url and new_url == existing_url:
+            # Check if all four key fields match
+            if (new_title == existing_title and 
+                new_company == existing_company and
+                new_location == existing_location and
+                new_description == existing_description):
                 return i
             
         return None
-    
-    def _calculate_similarity(self, text1: str, text2: str) -> float:
-        if not text1 or not text2:
-            return 0.0
-        return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
     
     def _merge_job_data(self, existing_job: Dict, new_job: Dict) -> Dict:
         merged_job = existing_job.copy()
@@ -265,126 +324,3 @@ class JobDataManager:
             'top_locations': sorted(locations.items(), key=lambda x: x[1], reverse=True)[:10],
             'sources': sources
         }
-        
-    def export_to_csv(self, output_path: str = None):
-        if not output_path:
-            output_path = self.storage_path.replace('.json', '.csv')
-
-        jobs = self.load_jobs()
-        temp_manager = JobDataManager(output_path)
-        temp_manager._save_to_csv(jobs)
-
-        logging.info(f"Exported {len(jobs)} jobs to {output_path}")
-
-    def filter_jobs(self, filters: Dict) -> List[Dict]:
-        jobs = self.load_jobs()
-        filtered_jobs = []
-
-        for job in jobs:
-            match = True
-            
-            if 'company' in filters:
-                if filters['company'].lower() not in job.get('company', '').lower():
-                    match = False
-            
-            if 'location' in filters:
-                if filters['location'].lower() not in job.get('location', '').lower():
-                    match = False
-
-            if 'title' in filters:
-                if filters['title'].lower() not in job.get('title', '').lower():
-                    match = False
-
-            if 'source' in filters:
-                job_sources = job.get('source', [job.get('source', '')])
-                if not any(filters['source'].lower() in source.lower() for source in job_sources):
-                    match = False
-
-            if match:
-                filtered_jobs.append(job)
-
-        return filtered_jobs
-    
-    def cleanup_old_jobs(self, days_old: int = 30):
-        jobs = self.load_jobs()
-        current_time = datetime.now()
-
-        fresh_jobs = []
-        for job in jobs:
-            scraped_at = job.get('scraped_at')
-            if scraped_at:
-                try:
-                    scraped_time = datetime.fromisoformat(scraped_at)
-                    age_days = (current_time - scraped_time).days
-
-                    if age_days <= days_old:
-                        fresh_jobs.append(job)
-                except ValueError:
-                    fresh_jobs.append(job)
-            else:
-                fresh_jobs.append(job)
-        
-        self._save_to_file(fresh_jobs)
-        removed_count = len(jobs) - len(fresh_jobs)
-        logging.info(f"Removed {removed_count} old jobs, kept {len(fresh_jobs)} jobs")
-
-        return removed_count
-    
-    def analyze_data(self):
-        """Analyze job data and provide insights"""
-        jobs = self.load_jobs()
-        
-        if not jobs:
-            print("No jobs data to analyze")
-            return
-            
-        print(f"\n📊 JOB DATA ANALYSIS")
-        print("=" * 50)
-        print(f"Total Jobs: {len(jobs)}")
-        
-        # Analyze companies
-        companies = [job.get('company', 'Unknown') for job in jobs]
-        company_counts = Counter(companies)
-        print(f"\n🏢 TOP COMPANIES:")
-        for company, count in company_counts.most_common(5):
-            print(f"  • {company}: {count} jobs")
-        
-        # Analyze locations
-        locations = [job.get('location', 'Unknown') for job in jobs]
-        location_counts = Counter(locations)
-        print(f"\n📍 LOCATIONS:")
-        for location, count in location_counts.most_common(5):
-            print(f"  • {location}: {count} jobs")
-            
-        # Analyze job titles
-        titles = [job.get('title', 'Unknown') for job in jobs]
-        print(f"\n💼 SAMPLE JOB TITLES:")
-        for title in titles[:8]:
-            print(f"  • {title}")
-            
-        # Check data quality
-        has_description = sum(1 for job in jobs if job.get('description') and 'not available' not in job.get('description', '').lower())
-        has_url = sum(1 for job in jobs if job.get('url'))
-        
-        print(f"\n📈 DATA QUALITY:")
-        print(f"  • Jobs with descriptions: {has_description}/{len(jobs)} ({has_description/len(jobs)*100:.1f}%)")
-        print(f"  • Jobs with URLs: {has_url}/{len(jobs)} ({has_url/len(jobs)*100:.1f}%)")
-    
-    def search_jobs(self, query: str) -> List[Dict]:
-        """Search jobs by keyword across title, company, description"""
-        query = query.lower()
-        results = []
-        jobs = self.load_jobs()
-        
-        for job in jobs:
-            searchable_text = ' '.join([
-                job.get('title', ''),
-                job.get('company', ''),
-                job.get('description', ''),
-                job.get('location', '')
-            ]).lower()
-            
-            if query in searchable_text:
-                results.append(job)
-        
-        return results
