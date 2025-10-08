@@ -4,14 +4,14 @@ from .models import Company, Job
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
     list_display = ['name', 'company_website', 'company_email', 'created_at']
-    list_filter = ['created_at', 'industry']
+    list_filter = ['created_at']
     search_fields = ['name', 'company_website', 'company_email']
     readonly_fields = ['created_at']
     ordering = ['-created_at']
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ['title', 'company', 'location', 'source', 'salary', 'scraped_at']
+    list_display = ['title', 'company', 'location', 'source', 'scraped_at']
     list_filter = ['source', 'location', 'scraped_at', 'created_at']
     search_fields = ['title', 'company__name', 'location', 'description']
     readonly_fields = ['created_at', 'updated_at', 'scraped_at']
@@ -29,7 +29,7 @@ class JobAdmin(admin.ModelAdmin):
             'fields': ('title', 'company', 'location', 'url')
         }),
         ('Job Details', {
-            'fields': ('description', 'salary', 'source')
+            'fields': ('description', 'source')
         }),
         ('Timestamps', {
             'fields': ('scraped_at', 'created_at', 'updated_at'),

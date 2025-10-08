@@ -7,8 +7,7 @@ class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = [
-            'id', 'name', 'company_website', 'company_email', 
-            'description', 'employee_count', 'industry', 
+            'id', 'name', 'company_website', 'company_email',
             'created_at', 'jobs_count'
         ]
     
@@ -23,7 +22,7 @@ class JobListSerializer(serializers.ModelSerializer):
         model = Job
         fields = [
             'id', 'title', 'company_name', 'company_website',
-            'location', 'salary', 'source', 'url', 'scraped_at'
+            'location', 'source', 'url', 'scraped_at'
         ]
 
 class JobDetailSerializer(serializers.ModelSerializer):
@@ -33,6 +32,6 @@ class JobDetailSerializer(serializers.ModelSerializer):
         model = Job
         fields = [
             'id', 'title', 'company', 'location', 'url',
-            'description', 'salary', 'source', 'scraped_at',
+            'description', 'source', 'scraped_at',
             'created_at', 'updated_at'
         ]
